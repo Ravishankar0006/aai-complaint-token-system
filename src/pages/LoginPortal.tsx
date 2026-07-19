@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Plane, Lock, Mail, Eye, EyeOff, Shield, HardHat, Info, HelpCircle, X } from "lucide-react";
+import { useState, useCallback } from "react";
+import { motion } from "framer-motion";
+import { Plane, Lock, Mail, Eye, EyeOff, HelpCircle } from "lucide-react";
 import { db } from "../db/mockDb";
 import { User } from "../types";
 
@@ -21,17 +21,7 @@ export function LoginPortal({ onLoginSuccess, onComplainantAccess }: LoginPortal
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [showDrawer, setShowDrawer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Close drawer on Escape
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShowDrawer(false);
-    };
-    if (showDrawer) window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [showDrawer]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -86,12 +76,7 @@ export function LoginPortal({ onLoginSuccess, onComplainantAccess }: LoginPortal
     })();
   }, [email, password, onLoginSuccess]);
 
-  const handleUseCredential = useCallback((demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setErrorMsg("");
-    setShowDrawer(false);
-  }, []);
+
 
   return (
     <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4 relative overflow-hidden bg-slate-50 dark:bg-airport-bg">
@@ -191,92 +176,7 @@ export function LoginPortal({ onLoginSuccess, onComplainantAccess }: LoginPortal
           <HelpCircle size={14} /> Access Complainant Portal (Public)
         </button>
 
-        <button
-          onClick={() => setShowDrawer(true)}
-          className="mt-5 w-full text-[10px] font-bold text-blue-500 hover:text-blue-400 flex items-center justify-center gap-1 transition-colors"
-        >
-          <Info size={11} /> View Demo Accounts & Credentials
-        </button>
       </motion.div>
-
-      {/* Demo Credentials Drawer */}
-      <AnimatePresence>
-        {showDrawer && (
-          <div
-            className="modal-overlay items-end"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowDrawer(false); }}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Demo credentials"
-          >
-            <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              className="bg-white dark:bg-airport-card border border-slate-200 dark:border-slate-800 rounded-t-2xl p-6 w-full max-w-md shadow-elevated max-h-[80vh] overflow-y-auto flex flex-col gap-4"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                    <Info size={14} className="text-blue-500" /> Demo Roster Accounts
-                  </h3>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Click any account to autofill credentials.</p>
-                </div>
-                <button onClick={() => setShowDrawer(false)} className="btn-icon" aria-label="Close drawer">
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-2.5">
-                {[
-                  { name: "Vikas Mehra", email: "vikas.mehra@aai.aero", pass: "admin123", role: "Admin", icon: Shield, color: "badge-blue" },
-                  { name: "Manager", email: "manager@aai.aero", pass: "manager123", role: "Manager", icon: Shield, color: "badge-purple" },
-                ].map((acc) => (
-                  <button
-                    key={acc.email}
-                    onClick={() => handleUseCredential(acc.email, acc.pass)}
-                    className="card-interactive p-3 flex items-center justify-between text-left"
-                  >
-                    <div>
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{acc.name}</span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">{acc.email}</span>
-                    </div>
-                    <span className={acc.color}>
-                      <acc.icon size={8} className="inline mr-0.5" /> {acc.role}
-                    </span>
-                  </button>
-                ))}
-
-                <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
-                  <span className="section-label mb-2 block">Technicians (Pass: Mobile Number)</span>
-                  <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto">
-                    {[
-                      { name: "sarfaraj sahil", email: "sarfarajsahil@gmail.com", dept: "IT Helpdesk", phone: "9430917757" },
-                      { name: "partham", email: "parthm@gmail.com", dept: "IT Helpdesk", phone: "8826631892" },
-                      { name: "Chandrakanta jena", email: "Chandrakantajena@gmail.com", dept: "IT Helpdesk", phone: "8929807604" },
-                      { name: "Shivam", email: "shivam@gmail.com", dept: "IT Helpdesk", phone: "8700378701" },
-                    ].map((tech) => (
-                      <button
-                        key={tech.email}
-                        onClick={() => handleUseCredential(tech.email, tech.phone)}
-                        className="card-interactive p-2.5 flex items-center justify-between text-left"
-                      >
-                        <div>
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{tech.name}</span>
-                          <span className="text-[9px] text-slate-550 dark:text-slate-400 block">{tech.email} (Pass: {tech.phone})</span>
-                        </div>
-                        <span className="badge-slate flex items-center gap-0.5">
-                          <HardHat size={8} /> {tech.dept}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
