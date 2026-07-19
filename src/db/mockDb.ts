@@ -36,7 +36,7 @@ const SEED_CATEGORIES: Category[] = [
 
 const SEED_USERS: User[] = [
   { id: "admin-1", name: "Vikas Mehra", email: "vikas.mehra@aai.aero", role: "admin", phone: "+919876543210", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString() },
-  { id: "disp-1", name: "Manager", email: "manager@aai.aero", role: "Manager", phone: "+919876543211", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString() },
+  { id: "disp-1", name: "Manager", email: "manager@aai.aero", role: "dispatcher", phone: "+919876543211", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString() },
 
   // IT Helpdesk Technicians
   { id: "tech-1", name: "Aman Sharma", email: "aman.s@aai.aero", role: "technician", phone: "+919911001101", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString() },

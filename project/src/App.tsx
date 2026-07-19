@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Navbar } from "./components/Navbar";
 import { LandingPage } from "./pages/LandingPage";
 import { ComplainantPortal } from "./pages/ComplainantPortal";
@@ -6,7 +6,7 @@ import { TechnicianPanel } from "./pages/TechnicianPanel";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { LoginPortal } from "./pages/LoginPortal";
 import { User } from "./types";
-import { db } from "./db/mockDb";
+import { supabase } from "./db/supabaseClient";
 import { Bell, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -15,20 +15,75 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Use ref for notification count to avoid stale closure
-  const lastNotifCountRef = useRef(db.getNotifications().length);
-
   useEffect(() => {
-    const interval = setInterval(() => {
-      const allNotifs = db.getNotifications();
-      if (allNotifs.length > lastNotifCountRef.current) {
-        const latest = allNotifs[0];
-        setToastMessage(`[${latest.channel.toUpperCase()}] to ${latest.recipient}: ${latest.message}`);
-        lastNotifCountRef.current = allNotifs.length;
-      }
-    }, 1500);
+    // 1. Subscribe to notifications realtime channel to show toast alerts
+    const notificationsChannel = supabase
+      .channel("notifications-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications" },
+        (payload: any) => {
+          const latest = payload.new;
+          setToastMessage(`[${latest.channel.toUpperCase()}] to ${latest.recipient}: ${latest.message}`);
+        }
+      )
+      .subscribe();
 
-    return () => clearInterval(interval);
+    // 2. Subscribe to tokens changes to broadcast update event
+    const tokensChannel = supabase
+      .channel("tokens-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tokens" },
+        () => {
+          window.dispatchEvent(new Event("cts_db_updated"));
+        }
+      )
+      .subscribe();
+
+    // 3. Subscribe to assignment logs changes to broadcast update event
+    const logsChannel = supabase
+      .channel("logs-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "assignment_logs" },
+        () => {
+          window.dispatchEvent(new Event("cts_db_updated"));
+        }
+      )
+      .subscribe();
+
+    // 4. Subscribe to tech_statuses changes to broadcast update event
+    const techStatusesChannel = supabase
+      .channel("tech-statuses-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tech_statuses" },
+        () => {
+          window.dispatchEvent(new Event("cts_db_updated"));
+        }
+      )
+      .subscribe();
+
+    // 5. Subscribe to token_history changes to broadcast update event
+    const historyChannel = supabase
+      .channel("history-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "token_history" },
+        () => {
+          window.dispatchEvent(new Event("cts_db_updated"));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(notificationsChannel);
+      supabase.removeChannel(tokensChannel);
+      supabase.removeChannel(logsChannel);
+      supabase.removeChannel(techStatusesChannel);
+      supabase.removeChannel(historyChannel);
+    };
   }, []);
 
   // Auto-dismiss toasts
@@ -107,7 +162,7 @@ export default function App() {
             {currentView === "technician" && currentUser && (
               <TechnicianPanel techId={currentUser.id} />
             )}
-            {currentView === "admin" && currentUser && <AdminDashboard />}
+            {currentView === "admin" && currentUser && <AdminDashboard currentUser={currentUser} />}
           </motion.div>
         </AnimatePresence>
       </main>

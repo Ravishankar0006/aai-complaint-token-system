@@ -16,11 +16,7 @@ import {
 } from "../types";
 import { supabase } from "./supabaseClient";
 
-// ─────────────────────────────────────────────────────────────────────────
-// Static configuration (not per-user data — no need for this to live in the
-// database; every user should see the same fixed list of departments and
-// complaint categories).
-// ─────────────────────────────────────────────────────────────────────────
+// Seed Data
 const SEED_DEPARTMENTS: Department[] = [
   { id: "dept-it", name: "IT Helpdesk" },
   { id: "dept-elec", name: "Electrical" },
@@ -38,235 +34,300 @@ const SEED_CATEGORIES: Category[] = [
   { id: "cat-ac", name: "AC Cooling & Ventilation", department: "HVAC", defaultSlaHours: 6 },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────
-// In-memory cache. This is what every page reads synchronously via
-// db.getTokens(), db.getUsers(), etc. — exactly like before. The cache is:
-//   1) populated once at app startup from Supabase (see initDb()), and
-//   2) kept in sync automatically whenever ANY user changes data, via a
-//      Supabase Realtime subscription (see subscribeRealtime()).
-// This is what makes changes show up live for every logged-in user.
-// ─────────────────────────────────────────────────────────────────────────
-let _users: User[] = [];
-let _tokens: Token[] = [];
-let _techStatuses: TechnicianStatus[] = [];
-let _history: TokenHistory[] = [];
-let _assignmentLogs: AssignmentLog[] = [];
-let _notifications: NotificationLog[] = [];
-let _pointers: Record<string, number> = {};
+const SEED_USERS: User[] = [
+  { id: "admin-1", name: "Vikas Mehra", email: "vikas.mehra@aai.aero", role: "admin", phone: "+919876543210", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString() },
+  { id: "disp-1", name: "Manager", email: "manager@aai.aero", role: "dispatcher", phone: "+919876543211", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString() },
 
-let _initPromise: Promise<void> | null = null;
+  // IT Helpdesk Technicians
+  { id: "tech-1", name: "Aman Sharma", email: "aman.s@aai.aero", role: "technician", phone: "+919911001101", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString() },
+  { id: "tech-2", name: "Neha Gupta", email: "neha.g@aai.aero", role: "technician", phone: "+919911001102", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString() },
+  { id: "tech-3", name: "Rohan Das", email: "rohan.d@aai.aero", role: "technician", phone: "+919911001103", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString() },
+  { id: "tech-4", name: "Vikram Malhotra", email: "vikram.m@aai.aero", role: "technician", phone: "+919911001104", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString() },
+  { id: "tech-5", name: "Priya Patel", email: "priya.p@aai.aero", role: "technician", phone: "+919911001105", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString() },
 
-// BroadcastChannel: keeps multiple tabs on the SAME device instantly in sync
-// (no network round-trip needed). Realtime (below) handles syncing across
-// DIFFERENT users/devices. Keeping both is harmless and gives the snappiest
-// experience on the same machine.
-let syncChannel: BroadcastChannel | null = null;
-try {
-  if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-    syncChannel = new BroadcastChannel("cts_db_sync_channel");
-    syncChannel.onmessage = (event) => {
-      if (event.data === "sync" && typeof window !== "undefined") {
-        window.dispatchEvent(new Event("cts_db_updated"));
-      }
-    };
-  }
-} catch (e) {
-  // Gracefully skip BroadcastChannel in non-browser environments (e.g. tests)
-}
+  // Other Dept Technicians
+  { id: "tech-6", name: "Suresh Kumar", email: "suresh.k@aai.aero", role: "technician", phone: "+919911001106", status: "active", department: "Electrical", createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString() },
+  { id: "tech-7", name: "Rajesh Yadav", email: "rajesh.y@aai.aero", role: "technician", phone: "+919911001107", status: "active", department: "Plumbing", createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString() },
+  { id: "tech-8", name: "Sunita Rao", email: "sunita.r@aai.aero", role: "technician", phone: "+919911001108", status: "active", department: "HVAC", createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString() },
+];
+
+const SEED_TECH_STATUSES: TechnicianStatus[] = [
+  { userId: "tech-1", currentStatus: "available", department: "IT Helpdesk", rotationPosition: 1 },
+  { userId: "tech-2", currentStatus: "available", department: "IT Helpdesk", rotationPosition: 2 },
+  { userId: "tech-3", currentStatus: "available", department: "IT Helpdesk", rotationPosition: 3 },
+  { userId: "tech-4", currentStatus: "available", department: "IT Helpdesk", rotationPosition: 4 },
+  { userId: "tech-5", currentStatus: "available", department: "IT Helpdesk", rotationPosition: 5 },
+  { userId: "tech-6", currentStatus: "available", department: "Electrical", rotationPosition: 1 },
+  { userId: "tech-7", currentStatus: "available", department: "Plumbing", rotationPosition: 1 },
+  { userId: "tech-8", currentStatus: "available", department: "HVAC", rotationPosition: 1 }
+];
 
 function broadcastSync() {
-  if (syncChannel) {
-    syncChannel.postMessage("sync");
-  }
   if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
     window.dispatchEvent(new Event("cts_db_updated"));
   }
 }
 
-async function fetchTable<T>(table: string): Promise<T[]> {
-  const { data, error } = await supabase.from(table).select("*");
-  if (error) {
-    console.error(`Failed to fetch "${table}" from Supabase:`, error.message);
-    return [];
-  }
-  return (data as T[]) ?? [];
-}
-
-async function fetchPointers(): Promise<Record<string, number>> {
-  const { data, error } = await supabase.from("pointers").select("*");
-  if (error) {
-    console.error("Failed to fetch pointers from Supabase:", error.message);
-    return {};
-  }
-  const result: Record<string, number> = {};
-  (data ?? []).forEach((row: { department: string; position: number }) => {
-    result[row.department] = row.position;
-  });
-  return result;
-}
-
-// One shared realtime channel that listens for changes on every table and
-// refreshes the matching slice of the local cache, then notifies the UI via
-// the same "cts_db_updated" event pages already listen for.
-function subscribeRealtime() {
-  supabase
-    .channel("cts-realtime")
-    .on("postgres_changes", { event: "*", schema: "public", table: "tokens" }, async () => {
-      _tokens = await fetchTable<Token>("tokens");
-      broadcastSync();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "users" }, async () => {
-      _users = await fetchTable<User>("users");
-      broadcastSync();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "tech_statuses" }, async () => {
-      _techStatuses = await fetchTable<TechnicianStatus>("tech_statuses");
-      broadcastSync();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "token_history" }, async () => {
-      _history = await fetchTable<TokenHistory>("token_history");
-      broadcastSync();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "assignment_logs" }, async () => {
-      _assignmentLogs = await fetchTable<AssignmentLog>("assignment_logs");
-      broadcastSync();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, async () => {
-      _notifications = await fetchTable<NotificationLog>("notifications");
-      broadcastSync();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "pointers" }, async () => {
-      _pointers = await fetchPointers();
-      broadcastSync();
-    })
-    .subscribe();
-}
-
-// Call this once, before the app renders (see src/main.tsx). It loads all
-// current data from Supabase into the cache and starts the realtime
-// subscription. Safe to call more than once — subsequent calls reuse the
-// same in-flight/completed promise.
-export function initDb(): Promise<void> {
-  if (_initPromise) return _initPromise;
-
-  _initPromise = (async () => {
-    const [users, tokens, techStatuses, history, assignmentLogs, notifications, pointers] =
-      await Promise.all([
-        fetchTable<User>("users"),
-        fetchTable<Token>("tokens"),
-        fetchTable<TechnicianStatus>("tech_statuses"),
-        fetchTable<TokenHistory>("token_history"),
-        fetchTable<AssignmentLog>("assignment_logs"),
-        fetchTable<NotificationLog>("notifications"),
-        fetchPointers(),
-      ]);
-
-    _users = users;
-    _tokens = tokens;
-    _techStatuses = techStatuses;
-    _history = history;
-    _assignmentLogs = assignmentLogs;
-    _notifications = notifications;
-    _pointers = pointers;
-
-    subscribeRealtime();
-  })();
-
-  return _initPromise;
-}
-
-// Fire-and-forget upsert to Supabase. The local cache has already been
-// updated synchronously above the call site, so the UI never waits on this —
-// it just pushes the change to the shared database in the background so
-// every other user's realtime subscription picks it up.
-function pushUpsert(table: string, rows: unknown[]) {
-  if (rows.length === 0) return;
-  supabase
-    .from(table)
-    .upsert(rows)
-    .then(({ error }) => {
-      if (error) {
-        console.error(`Failed to save to "${table}" in Supabase:`, error.message);
-      }
-    });
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Public db object — SAME SHAPE as the old localStorage version, so nothing
-// in App.tsx / AdminDashboard.tsx / TechnicianPanel.tsx / ComplainantPortal.tsx
-// / LandingPage.tsx / LoginPortal.tsx needs to change.
-// ─────────────────────────────────────────────────────────────────────────
+// Database state accessor functions
 export const db = {
   getDepartments: (): Department[] => SEED_DEPARTMENTS,
   getCategories: (): Category[] => SEED_CATEGORIES,
 
-  getUsers: (): User[] => _users,
-  saveUsers: (users: User[]) => {
-    _users = users;
-    broadcastSync();
-    pushUpsert("users", users);
-  },
-
-  getTokens: (): Token[] => _tokens,
-  saveTokens: (tokens: Token[]) => {
-    _tokens = tokens;
-    broadcastSync();
-    pushUpsert("tokens", tokens);
-  },
-
-  getTechStatuses: (): TechnicianStatus[] => _techStatuses,
-  saveTechStatuses: (statuses: TechnicianStatus[]) => {
-    _techStatuses = statuses;
-    broadcastSync();
-    pushUpsert("tech_statuses", statuses);
-  },
-
-  getHistory: (): TokenHistory[] => _history,
-  saveHistory: (history: TokenHistory[]) => {
-    _history = history;
-    broadcastSync();
-    pushUpsert("token_history", history);
-  },
-
-  getAssignmentLogs: (): AssignmentLog[] => _assignmentLogs,
-  saveAssignmentLogs: (logs: AssignmentLog[]) => {
-    _assignmentLogs = logs;
-    broadcastSync();
-    pushUpsert("assignment_logs", logs);
-  },
-
-  getNotifications: (): NotificationLog[] => _notifications,
-  saveNotifications: (logs: NotificationLog[]) => {
-    _notifications = logs;
-    broadcastSync();
-    pushUpsert("notifications", logs);
-  },
-
-  getPointers: (): Record<string, number> => _pointers,
-  savePointers: (pointers: Record<string, number>) => {
-    _pointers = pointers;
-    broadcastSync();
-    const rows = Object.entries(pointers).map(([department, position]) => ({ department, position }));
-    pushUpsert("pointers", rows);
-  },
-
-  // NOTE: this now wipes the SHARED cloud database for every user, not just
-  // your own browser. It isn't wired to any button in the current UI. Only
-  // call it deliberately (e.g. from the browser console) when you actually
-  // want to clear all live data.
-  resetDatabase: async () => {
-    const tables = ["tokens", "users", "tech_statuses", "token_history", "assignment_logs", "notifications", "pointers"];
-    for (const table of tables) {
-      const idColumn = table === "pointers" ? "department" : table === "tech_statuses" ? "userId" : "id";
-      await supabase.from(table).delete().neq(idColumn, "___none___");
+  getUsers: async (): Promise<User[]> => {
+    const { data, error } = await supabase.from("users").select("*");
+    if (error) {
+      console.error("Error fetching users:", error);
+      throw error;
     }
+    return data || [];
+  },
+  saveUsers: async (users: User[]) => {
+    const { error } = await supabase.from("users").upsert(users);
+    if (error) {
+      console.error("Error saving users:", error);
+      throw error;
+    }
+    broadcastSync();
+  },
+
+  getTokens: async (): Promise<Token[]> => {
+    const { data, error } = await supabase.from("tokens").select("*");
+    if (error) {
+      console.error("Error fetching tokens:", error);
+      throw error;
+    }
+    return data || [];
+  },
+  saveTokens: async (tokens: Token[]) => {
+    const { error } = await supabase.from("tokens").upsert(tokens);
+    if (error) {
+      console.error("Error saving tokens:", error);
+      throw error;
+    }
+    broadcastSync();
+  },
+
+  getTechStatuses: async (): Promise<TechnicianStatus[]> => {
+    const { data, error } = await supabase.from("tech_statuses").select("*");
+    if (error) {
+      console.error("Error fetching tech statuses:", error);
+      throw error;
+    }
+    return data || [];
+  },
+  saveTechStatuses: async (statuses: TechnicianStatus[]) => {
+    const { error } = await supabase.from("tech_statuses").upsert(statuses);
+    if (error) {
+      console.error("Error saving tech statuses:", error);
+      throw error;
+    }
+    broadcastSync();
+  },
+
+  getHistory: async (): Promise<TokenHistory[]> => {
+    const { data, error } = await supabase.from("token_history").select("*");
+    if (error) {
+      console.error("Error fetching history:", error);
+      throw error;
+    }
+    return data || [];
+  },
+  saveHistory: async (history: TokenHistory[]) => {
+    const { error } = await supabase.from("token_history").upsert(history);
+    if (error) {
+      console.error("Error saving history:", error);
+      throw error;
+    }
+    broadcastSync();
+  },
+
+  getAssignmentLogs: async (): Promise<AssignmentLog[]> => {
+    const { data, error } = await supabase.from("assignment_logs").select("*");
+    if (error) {
+      console.error("Error fetching assignment logs:", error);
+      throw error;
+    }
+    return data || [];
+  },
+  saveAssignmentLogs: async (logs: AssignmentLog[]) => {
+    const { error } = await supabase.from("assignment_logs").upsert(logs);
+    if (error) {
+      console.error("Error saving assignment logs:", error);
+      throw error;
+    }
+    broadcastSync();
+  },
+
+  getNotifications: async (): Promise<NotificationLog[]> => {
+    const { data, error } = await supabase.from("notifications").select("*");
+    if (error) {
+      console.error("Error fetching notifications:", error);
+      throw error;
+    }
+    return data || [];
+  },
+  saveNotifications: async (logs: NotificationLog[]) => {
+    const { error } = await supabase.from("notifications").upsert(logs);
+    if (error) {
+      console.error("Error saving notifications:", error);
+      throw error;
+    }
+    broadcastSync();
+  },
+
+  getPointers: async (): Promise<Record<string, number>> => {
+    const { data, error } = await supabase.from("pointers").select("*");
+    if (error) {
+      console.error("Error fetching pointers:", error);
+      throw error;
+    }
+    const record: Record<string, number> = {};
+    data?.forEach((row: any) => {
+      record[row.department] = row.position;
+    });
+    return record;
+  },
+  savePointers: async (pointers: Record<string, number>) => {
+    const rows = Object.entries(pointers).map(([dept, pos]) => ({
+      department: dept,
+      position: pos
+    }));
+    const { error } = await supabase.from("pointers").upsert(rows);
+    if (error) {
+      console.error("Error saving pointers:", error);
+      throw error;
+    }
+    broadcastSync();
+  },
+
+  resetDatabase: async () => {
+    await supabase.from("tokens").delete().neq("id", "");
+    await supabase.from("token_history").delete().neq("id", "");
+    await supabase.from("assignment_logs").delete().neq("id", "");
+    await supabase.from("notifications").delete().neq("id", "");
+    await supabase.from("pointers").delete().neq("department", "");
+    await supabase.from("users").delete().neq("id", "");
+    await supabase.from("tech_statuses").delete().neq("userId", "");
+    await supabase.from("users").insert(SEED_USERS);
+    await supabase.from("tech_statuses").insert(SEED_TECH_STATUSES);
+    broadcastSync();
     window.location.reload();
   },
+
+  createUser: async (user: User): Promise<void> => {
+    const { error } = await supabase.from("users").insert(user);
+    if (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
+    broadcastSync();
+  },
+
+  updateUser: async (user: User): Promise<void> => {
+    const { error } = await supabase.from("users").update(user).eq("id", user.id);
+    if (error) {
+      console.error("Error updating user:", error);
+      throw error;
+    }
+    broadcastSync();
+  },
+
+  deleteUser: async (userId: string): Promise<void> => {
+    const { error } = await supabase.from("users").delete().eq("id", userId);
+    if (error) {
+      console.error("Error deleting user:", error);
+      throw error;
+    }
+    broadcastSync();
+  },
+
+  deleteTechnician: async (techId: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      // 1. Fetch and re-route open tickets assigned to this technician
+      const { data: tokens, error: tErr } = await supabase.from("tokens").select("*");
+      if (!tErr && tokens) {
+        const assignedTokens = tokens.filter(
+          (t) => t.assignedTo === techId && ["ASSIGNED", "IN_PROGRESS", "ON_HOLD"].includes(t.status)
+        );
+
+        if (assignedTokens.length > 0) {
+          for (const token of assignedTokens) {
+            const oldStatus = token.status;
+            await supabase.from("tokens").update({
+              status: "NEW",
+              assignedTo: null,
+              updatedAt: new Date().toISOString()
+            }).eq("id", token.id);
+
+            await logHistory(
+              token.id,
+              oldStatus,
+              "NEW",
+              "system",
+              "Auto Re-routing Engine",
+              "system",
+              "Assigned technician was deleted from roster. Token returned to queue."
+            );
+          }
+        }
+      }
+
+      // 2. Delete tech status from tech_statuses table
+      const { error: sErr } = await supabase.from("tech_statuses").delete().eq("userId", techId);
+      if (sErr) console.error("Error deleting tech status:", sErr);
+
+      // 3. Delete user record from users table
+      const { error: uErr } = await supabase.from("users").delete().eq("id", techId);
+      if (uErr) {
+        console.error("Error deleting user record:", uErr);
+        return { success: false, message: "Error deleting user: " + uErr.message };
+      }
+
+      broadcastSync();
+      return { success: true, message: "Technician deleted successfully" };
+    } catch (err: any) {
+      return { success: false, message: err.message || "An error occurred during deletion" };
+    }
+  },
+
+  deleteAdmin: async (adminId: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { error } = await supabase.from("users").delete().eq("id", adminId);
+      if (error) {
+        console.error("Error deleting admin:", error);
+        return { success: false, message: "Error deleting admin: " + error.message };
+      }
+      broadcastSync();
+      return { success: true, message: "Admin removed successfully" };
+    } catch (err: any) {
+      return { success: false, message: err.message || "An error occurred" };
+    }
+  },
+
+  deleteToken: async (tokenId: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      // 1. Delete associated secondary data
+      await supabase.from("token_history").delete().eq("tokenId", tokenId);
+      await supabase.from("assignment_logs").delete().eq("tokenId", tokenId);
+      await supabase.from("notifications").delete().eq("tokenId", tokenId);
+
+      // 2. Delete the token itself
+      const { error } = await supabase.from("tokens").delete().eq("id", tokenId);
+      if (error) {
+        console.error("Error deleting token:", error);
+        return { success: false, message: "Error deleting token: " + error.message };
+      }
+
+      broadcastSync();
+      return { success: true, message: "Complaint deleted successfully" };
+    } catch (err: any) {
+      return { success: false, message: err.message || "An error occurred" };
+    }
+  }
 };
 
 // Helper: Log notification
-function logNotification(tokenId: string, channel: "email" | "sms" | "push", recipient: string, message: string) {
-  const notifications = db.getNotifications();
+async function logNotification(tokenId: string, channel: "email" | "sms" | "push", recipient: string, message: string) {
   const newNotif: NotificationLog = {
     id: generateId("notif"),
     tokenId,
@@ -276,11 +337,15 @@ function logNotification(tokenId: string, channel: "email" | "sms" | "push", rec
     status: "success",
     message,
   };
-  db.saveNotifications([newNotif, ...notifications]);
+  const { error } = await supabase.from("notifications").insert(newNotif);
+  if (error) {
+    console.error("Error saving notification:", error);
+  }
+  broadcastSync();
 }
 
 // Helper: Add History Entry
-function logHistory(
+async function logHistory(
   tokenId: string,
   from: TokenStatus | "NONE",
   to: TokenStatus,
@@ -289,7 +354,6 @@ function logHistory(
   actorRole: UserRole | "system" | "public",
   note?: string
 ) {
-  const history = db.getHistory();
   const entry: TokenHistory = {
     id: generateId("hist"),
     tokenId,
@@ -301,20 +365,25 @@ function logHistory(
     note,
     timestamp: new Date().toISOString(),
   };
-  db.saveHistory([...history, entry]);
+  const { error } = await supabase.from("token_history").insert(entry);
+  if (error) {
+    console.error("Error saving history:", error);
+  }
+  broadcastSync();
 }
 
 // Validate state transition
 function isValidTransition(from: TokenStatus, to: TokenStatus, isAdmin: boolean): boolean {
-  // Admins can force certain transitions that normal flow cannot
   if (isAdmin) return true;
   const allowed = VALID_TRANSITIONS[from];
   return allowed ? allowed.includes(to) : false;
 }
 
 // Central autoAssign function (Round Robin Engine)
-export function autoAssignToken(tokenId: string): { assigned: boolean; message: string; techName?: string } {
-  const tokens = db.getTokens();
+export async function autoAssignToken(tokenId: string): Promise<{ assigned: boolean; message: string; techName?: string }> {
+  const { data: tokens, error: tErr } = await supabase.from("tokens").select("*");
+  if (tErr || !tokens) return { assigned: false, message: "Error fetching tokens" };
+
   const tokenIndex = tokens.findIndex((t) => t.id === tokenId);
   if (tokenIndex === -1) {
     return { assigned: false, message: "Token not found" };
@@ -324,18 +393,17 @@ export function autoAssignToken(tokenId: string): { assigned: boolean; message: 
   const department = token.department;
 
   // 1. Get technicians in the token's department (excluding resigned)
-  const users = db.getUsers();
-  const statuses = db.getTechStatuses();
+  const { data: users, error: uErr } = await supabase.from("users").select("*");
+  const { data: statuses, error: sErr } = await supabase.from("tech_statuses").select("*");
+  if (uErr || sErr || !users || !statuses) return { assigned: false, message: "Error fetching user roster" };
 
   const deptTechs = statuses.filter(
     (s) => s.department === department && s.currentStatus !== "resigned"
   );
 
   if (deptTechs.length === 0) {
-    token.status = "NEW";
-    token.updatedAt = new Date().toISOString();
-    db.saveTokens(tokens);
-    logHistory(tokenId, "SUBMITTED", "NEW", "system", "Auto Assignment", "system", "No technicians configured in this department.");
+    await supabase.from("tokens").update({ status: "NEW", updatedAt: new Date().toISOString() }).eq("id", tokenId);
+    await logHistory(tokenId, "SUBMITTED", "NEW", "system", "Auto Assignment", "system", "No technicians configured in this department.");
     return { assigned: false, message: "No active technicians configured in this department." };
   }
 
@@ -343,7 +411,7 @@ export function autoAssignToken(tokenId: string): { assigned: boolean; message: 
   const orderedTechs = [...deptTechs].sort((a, b) => a.rotationPosition - b.rotationPosition);
 
   // 2. Fetch last assigned pointer for this department
-  const pointers = db.getPointers();
+  const pointers = await db.getPointers();
   const lastPos = pointers[department] !== undefined ? pointers[department] : 0;
 
   // 3. Find startIndex: first tech whose position > lastPos
@@ -372,20 +440,23 @@ export function autoAssignToken(tokenId: string): { assigned: boolean; message: 
     }
 
     const oldStatus = token.status;
-    token.status = "ASSIGNED";
-    token.assignedTo = techUser.id;
-    token.assignedAt = new Date().toISOString();
-    token.updatedAt = new Date().toISOString();
-    db.saveTokens(tokens);
+    const nowStr = new Date().toISOString();
 
-    chosenTechStatus.currentStatus = "busy";
-    chosenTechStatus.lastAssignedAt = new Date().toISOString();
-    db.saveTechStatuses(statuses);
+    await supabase.from("tokens").update({
+      status: "ASSIGNED",
+      assignedTo: techUser.id,
+      assignedAt: nowStr,
+      updatedAt: nowStr
+    }).eq("id", tokenId);
+
+    await supabase.from("tech_statuses").update({
+      currentStatus: "busy",
+      lastAssignedAt: nowStr
+    }).eq("userId", chosenTechStatus.userId);
 
     pointers[department] = chosenTechStatus.rotationPosition;
-    db.savePointers(pointers);
+    await db.savePointers(pointers);
 
-    const logs = db.getAssignmentLogs();
     const newLog: AssignmentLog = {
       id: generateId("assign"),
       tokenId,
@@ -393,11 +464,11 @@ export function autoAssignToken(tokenId: string): { assigned: boolean; message: 
       method: "auto",
       actorId: "system",
       actorName: "Auto Assignment Engine",
-      timestamp: new Date().toISOString(),
+      timestamp: nowStr,
     };
-    db.saveAssignmentLogs([newLog, ...logs]);
+    await supabase.from("assignment_logs").insert(newLog);
 
-    logHistory(
+    await logHistory(
       tokenId,
       oldStatus,
       "ASSIGNED",
@@ -407,8 +478,8 @@ export function autoAssignToken(tokenId: string): { assigned: boolean; message: 
       `Assigned to ${techUser.name} (Roster Position ${chosenTechStatus.rotationPosition})`
     );
 
-    logNotification(tokenId, "email", token.complainantContact, `Your ticket ${token.trackingId} has been assigned to technician ${techUser.name}.`);
-    logNotification(tokenId, "push", techUser.email, `New Ticket Assigned: ${token.trackingId} - ${token.category}`);
+    await logNotification(tokenId, "email", token.complainantContact, `Your ticket ${token.trackingId} has been assigned to technician ${techUser.name}.`);
+    await logNotification(tokenId, "push", techUser.email, `New Ticket Assigned: ${token.trackingId} - ${token.category}`);
 
     return {
       assigned: true,
@@ -419,11 +490,12 @@ export function autoAssignToken(tokenId: string): { assigned: boolean; message: 
 
   // 6. No technicians available
   const oldStatus = token.status;
-  token.status = "NEW";
-  token.updatedAt = new Date().toISOString();
-  db.saveTokens(tokens);
+  await supabase.from("tokens").update({
+    status: "NEW",
+    updatedAt: new Date().toISOString()
+  }).eq("id", tokenId);
 
-  logHistory(
+  await logHistory(
     tokenId,
     oldStatus,
     "NEW",
@@ -434,14 +506,14 @@ export function autoAssignToken(tokenId: string): { assigned: boolean; message: 
   );
 
   const adminUsers = users.filter((u) => u.role === "admin" || u.role === "dispatcher");
-  adminUsers.forEach((admin) => {
-    logNotification(
+  for (const admin of adminUsers) {
+    await logNotification(
       tokenId,
       "push",
       admin.email,
       `Unassigned Ticket Alert: All technicians in ${department} are occupied. ${token.trackingId} is in queue.`
     );
-  });
+  }
 
   return {
     assigned: false,
@@ -450,26 +522,30 @@ export function autoAssignToken(tokenId: string): { assigned: boolean; message: 
 }
 
 // Manual Override Assignment
-export function manualAssignToken(
+export async function manualAssignToken(
   tokenId: string,
   techId: string,
   actorId: string,
   actorName: string,
   actorRole: UserRole
-): { success: boolean; message: string } {
-  const tokens = db.getTokens();
+): Promise<{ success: boolean; message: string }> {
+  const { data: tokens, error: tErr } = await supabase.from("tokens").select("*");
+  if (tErr || !tokens) return { success: false, message: "Error fetching tokens" };
+
   const tokenIndex = tokens.findIndex((t) => t.id === tokenId);
   if (tokenIndex === -1) {
     return { success: false, message: "Token not found" };
   }
 
-  const users = db.getUsers();
+  const { data: users, error: uErr } = await supabase.from("users").select("*");
+  if (uErr || !users) return { success: false, message: "Error fetching user roster" };
   const techUser = users.find((u) => u.id === techId);
   if (!techUser || techUser.role !== "technician") {
     return { success: false, message: "Technician not found" };
   }
 
-  const statuses = db.getTechStatuses();
+  const { data: statuses, error: sErr } = await supabase.from("tech_statuses").select("*");
+  if (sErr || !statuses) return { success: false, message: "Error fetching technician statuses" };
   const techStatus = statuses.find((s) => s.userId === techId);
   if (!techStatus || techStatus.currentStatus === "resigned") {
     return { success: false, message: "Technician is resigned and unavailable" };
@@ -477,38 +553,36 @@ export function manualAssignToken(
 
   const token = tokens[tokenIndex];
   const oldStatus = token.status;
+  const nowStr = new Date().toISOString();
 
   // Re-enable previous tech if they were working on this token
   if (token.assignedTo && token.assignedTo !== techId) {
-    const prevTechStatus = statuses.find((s) => s.userId === token.assignedTo);
+    const prevTechStatus = statuses?.find((s) => s.userId === token.assignedTo);
     if (prevTechStatus && prevTechStatus.currentStatus === "busy") {
-      // Check if they have other open tokens before marking available
       const openTokensForPrevTech = tokens.filter(
         (t) => t.assignedTo === token.assignedTo && t.id !== tokenId && ["ASSIGNED", "IN_PROGRESS", "ON_HOLD"].includes(t.status)
       );
       if (openTokensForPrevTech.length === 0) {
-        prevTechStatus.currentStatus = "available";
+        await supabase.from("tech_statuses").update({ currentStatus: "available" }).eq("userId", token.assignedTo);
       }
     }
   }
 
   // Update Token
-  token.status = "ASSIGNED";
-  token.assignedTo = techId;
-  token.assignedAt = new Date().toISOString();
-  token.updatedAt = new Date().toISOString();
-  db.saveTokens(tokens);
+  await supabase.from("tokens").update({
+    status: "ASSIGNED",
+    assignedTo: techId,
+    assignedAt: nowStr,
+    updatedAt: nowStr
+  }).eq("id", tokenId);
 
   // Update new technician status to Busy
-  techStatus.currentStatus = "busy";
-  techStatus.lastAssignedAt = new Date().toISOString();
-  db.saveTechStatuses(statuses);
-
-  // Note: We deliberately DO NOT disturb lastAssignedPointer in department,
-  // matching Section 5.4 override rules.
+  await supabase.from("tech_statuses").update({
+    currentStatus: "busy",
+    lastAssignedAt: nowStr
+  }).eq("userId", techId);
 
   // Logs
-  const logs = db.getAssignmentLogs();
   const newLog: AssignmentLog = {
     id: generateId("assign"),
     tokenId,
@@ -516,11 +590,11 @@ export function manualAssignToken(
     method: "manual",
     actorId,
     actorName,
-    timestamp: new Date().toISOString(),
+    timestamp: nowStr,
   };
-  db.saveAssignmentLogs([newLog, ...logs]);
+  await supabase.from("assignment_logs").insert(newLog);
 
-  logHistory(
+  await logHistory(
     tokenId,
     oldStatus,
     "ASSIGNED",
@@ -531,29 +605,29 @@ export function manualAssignToken(
   );
 
   // Send notifications
-  logNotification(tokenId, "email", token.complainantContact, `Your ticket ${token.trackingId} has been manually assigned to technician ${techUser.name}.`);
-  logNotification(tokenId, "push", techUser.email, `Manual Ticket Assignment: ${token.trackingId} assigned to you.`);
+  await logNotification(tokenId, "email", token.complainantContact, `Your ticket ${token.trackingId} has been manually assigned to technician ${techUser.name}.`);
+  await logNotification(tokenId, "push", techUser.email, `Manual Ticket Assignment: ${token.trackingId} assigned to you.`);
 
   return { success: true, message: `Manually assigned to ${techUser.name}` };
 }
 
 // Check unassigned queue (called when a technician frees up)
-export function checkUnassignedQueue(department: string): void {
-  const tokens = db.getTokens();
-  // Find oldest NEW or SUBMITTED token in department
+export async function checkUnassignedQueue(department: string): Promise<void> {
+  const { data: tokens, error: tErr } = await supabase.from("tokens").select("*");
+  if (tErr || !tokens) return;
+
   const pendingTokens = tokens
     .filter((t) => t.department === department && (t.status === "NEW" || t.status === "SUBMITTED"))
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   if (pendingTokens.length > 0) {
     const nextToken = pendingTokens[0];
-    // Trigger autoAssign for it
-    autoAssignToken(nextToken.id);
+    await autoAssignToken(nextToken.id);
   }
 }
 
 // Token State Transition function (validation-first, mutation-after)
-export function updateTokenStatus(
+export async function updateTokenStatus(
   tokenId: string,
   newStatus: TokenStatus,
   actorId: string,
@@ -567,8 +641,10 @@ export function updateTokenStatus(
     ratingComment?: string;
     disputeReason?: string;
   }
-): { success: boolean; message: string } {
-  const tokens = db.getTokens();
+): Promise<{ success: boolean; message: string }> {
+  const { data: tokens, error: tErr } = await supabase.from("tokens").select("*");
+  if (tErr || !tokens) return { success: false, message: "Error fetching tokens" };
+
   const tokenIndex = tokens.findIndex((t) => t.id === tokenId);
   if (tokenIndex === -1) {
     return { success: false, message: "Token not found" };
@@ -577,7 +653,7 @@ export function updateTokenStatus(
   const token = tokens[tokenIndex];
   const oldStatus = token.status;
 
-  // === VALIDATION PHASE (no mutations) ===
+  // === VALIDATION PHASE ===
   if (oldStatus === newStatus) {
     return { success: false, message: "State is already identical" };
   }
@@ -595,55 +671,56 @@ export function updateTokenStatus(
     return { success: false, message: "Resolution note is mandatory when resolving a token" };
   }
 
-  // === MUTATION PHASE (all validation passed) ===
-  token.status = newStatus;
-  token.updatedAt = new Date().toISOString();
+  // === MUTATION PHASE ===
+  const nowStr = new Date().toISOString();
+  const updateData: Partial<Token> = {
+    status: newStatus,
+    updatedAt: nowStr
+  };
 
   if (newStatus === "ON_HOLD") {
-    token.holdReason = details!.holdReason;
+    updateData.holdReason = details!.holdReason;
   }
 
   if (newStatus === "RESOLVED") {
-    token.resolutionNote = details!.resolutionNote;
-    token.resolvedAt = new Date().toISOString();
+    updateData.resolutionNote = details!.resolutionNote;
+    updateData.resolvedAt = nowStr;
     if (details!.resolutionPhoto) {
-      token.resolutionPhoto = details!.resolutionPhoto;
+      updateData.resolutionPhoto = details!.resolutionPhoto;
     }
   }
 
   if (newStatus === "VERIFIED_CLOSED" && details?.rating) {
-    token.rating = details.rating;
+    updateData.rating = details.rating;
     if (details.ratingComment) {
-      token.ratingComment = details.ratingComment;
+      updateData.ratingComment = details.ratingComment;
     }
   }
 
-  // Store dispute reason when reopening
   if (oldStatus === "RESOLVED" && newStatus === "ASSIGNED" && details?.disputeReason) {
-    token.disputeReason = details.disputeReason;
+    updateData.disputeReason = details.disputeReason;
   }
 
-  db.saveTokens(tokens);
+  await supabase.from("tokens").update(updateData).eq("id", tokenId);
 
   // Handle Technician availability side effects
   const techId = token.assignedTo;
   if (techId) {
-    const statuses = db.getTechStatuses();
-    const techStatus = statuses.find((s) => s.userId === techId);
+    const { data: statuses } = await supabase.from("tech_statuses").select("*");
+    const techStatus = statuses?.find((s) => s.userId === techId);
 
     if (techStatus) {
       if (["RESOLVED", "VERIFIED_CLOSED"].includes(newStatus)) {
-        const openTokensForTech = tokens.filter(
+        const { data: freshTokens } = await supabase.from("tokens").select("*");
+        const openTokensForTech = (freshTokens || []).filter(
           (t) => t.assignedTo === techId && t.id !== tokenId && ["ASSIGNED", "IN_PROGRESS", "ON_HOLD"].includes(t.status)
         );
         if (openTokensForTech.length === 0) {
-          techStatus.currentStatus = "available";
-          db.saveTechStatuses(statuses);
-          checkUnassignedQueue(token.department);
+          await supabase.from("tech_statuses").update({ currentStatus: "available" }).eq("userId", techId);
+          await checkUnassignedQueue(token.department);
         }
       } else if (["IN_PROGRESS", "ON_HOLD", "ASSIGNED"].includes(newStatus)) {
-        techStatus.currentStatus = "busy";
-        db.saveTechStatuses(statuses);
+        await supabase.from("tech_statuses").update({ currentStatus: "busy" }).eq("userId", techId);
       }
     }
   }
@@ -651,12 +728,11 @@ export function updateTokenStatus(
   // If token is REOPENED (RESOLVED -> ASSIGNED)
   if (oldStatus === "RESOLVED" && newStatus === "ASSIGNED") {
     if (techId) {
-      const statuses = db.getTechStatuses();
-      const techStatus = statuses.find((s) => s.userId === techId);
+      const { data: statuses } = await supabase.from("tech_statuses").select("*");
+      const techStatus = statuses?.find((s) => s.userId === techId);
       if (techStatus && techStatus.currentStatus !== "resigned") {
-        techStatus.currentStatus = "busy";
-        db.saveTechStatuses(statuses);
-        logNotification(tokenId, "push", techStatus.userId, `Ticket Reopened: Complainant disputed resolution for ${token.trackingId}`);
+        await supabase.from("tech_statuses").update({ currentStatus: "busy" }).eq("userId", techId);
+        await logNotification(tokenId, "push", techStatus.userId, `Ticket Reopened: Complainant disputed resolution for ${token.trackingId}`);
       }
     }
   }
@@ -668,18 +744,18 @@ export function updateTokenStatus(
   else if (newStatus === "VERIFIED_CLOSED" && details?.rating) noteString = `Feedback: ${details.rating} Stars. ${details.ratingComment || ""}`;
   else if (details?.disputeReason) noteString = `Dispute: ${details.disputeReason}`;
 
-  logHistory(tokenId, oldStatus, newStatus, actorId, actorName, actorRole, noteString || undefined);
+  await logHistory(tokenId, oldStatus, newStatus, actorId, actorName, actorRole, noteString || undefined);
 
   // Send notifications
   if (newStatus === "RESOLVED") {
-    logNotification(
+    await logNotification(
       tokenId,
       "email",
       token.complainantContact,
       `Your ticket ${token.trackingId} has been marked as Resolved. Please review and verify to close.`
     );
   } else if (newStatus === "VERIFIED_CLOSED") {
-    logNotification(
+    await logNotification(
       tokenId,
       "email",
       token.complainantContact,
@@ -691,13 +767,13 @@ export function updateTokenStatus(
 }
 
 // Add/Submit new complaint from Complainant
-export function createComplaint(
+export async function createComplaint(
   name: string,
   contact: string,
   categoryName: string,
   description: string,
   photoUrl?: string
-): { success: boolean; token: Token } {
+): Promise<{ success: boolean; token: Token }> {
   const categories = db.getCategories();
   const categoryObj = categories.find((c) => c.name === categoryName);
   const department = categoryObj ? categoryObj.department : "IT Helpdesk";
@@ -722,23 +798,32 @@ export function createComplaint(
     updatedAt: new Date().toISOString(),
   };
 
-  const tokens = db.getTokens();
-  db.saveTokens([...tokens, newToken]);
+  const { error } = await supabase.from("tokens").insert(newToken);
+  if (error) {
+    console.error("Error creating complaint:", error);
+    throw error;
+  }
 
-  logHistory(tokenId, "NONE", "SUBMITTED", "public", name, "complainant", "Complaint submitted via portal");
-  logNotification(tokenId, "email", contact, `Ticket ${trackingId} created. Track it on the IGI Helpdesk portal.`);
+  await logHistory(tokenId, "NONE", "SUBMITTED", "public", name, "complainant", "Complaint submitted via portal");
+  await logNotification(tokenId, "email", contact, `Ticket ${trackingId} created. Track it on the IGI Helpdesk portal.`);
 
   // Auto assign right away
-  autoAssignToken(tokenId);
+  await autoAssignToken(tokenId);
 
-  // Re-read from the cache to get the updated token (autoAssign may have changed status)
-  const freshToken = db.getTokens().find((t) => t.id === tokenId);
+  // Re-read from storage to get the updated token
+  const { data: freshTokens } = await supabase.from("tokens").select("*").eq("id", tokenId);
+  const freshToken = freshTokens?.[0];
+
   return { success: true, token: freshToken || newToken };
 }
 
 // Centralized leave manager with auto re-routing of active tickets
-export function toggleTechnicianLeave(techId: string, currentStatus: TechStatus): { success: boolean; message: string } {
-  const statuses = db.getTechStatuses();
+export async function toggleTechnicianLeave(techId: string, currentStatus: TechStatus): Promise<{ success: boolean; message: string }> {
+  const { data: statuses, error: sErr } = await supabase.from("tech_statuses").select("*");
+  if (sErr || !statuses) {
+    return { success: false, message: "Technician status record not found." };
+  }
+
   const idx = statuses.findIndex((s) => s.userId === techId);
   if (idx === -1) {
     return { success: false, message: "Technician status record not found." };
@@ -748,38 +833,40 @@ export function toggleTechnicianLeave(techId: string, currentStatus: TechStatus)
 
   if (nextStatus === "on_leave") {
     // Re-route open tickets
-    const tokens = db.getTokens();
-    const openTokensForTech = tokens.filter(
-      (t) => t.assignedTo === techId && ["ASSIGNED", "IN_PROGRESS", "ON_HOLD"].includes(t.status)
-    );
+    const { data: tokens, error: tErr } = await supabase.from("tokens").select("*");
+    if (!tErr && tokens) {
+      const openTokensForTech = tokens.filter(
+        (t) => t.assignedTo === techId && ["ASSIGNED", "IN_PROGRESS", "ON_HOLD"].includes(t.status)
+      );
 
-    if (openTokensForTech.length > 0) {
-      openTokensForTech.forEach((token) => {
-        const oldStatus = token.status;
-        token.status = "NEW";
-        token.assignedTo = undefined;
-        token.updatedAt = new Date().toISOString();
+      if (openTokensForTech.length > 0) {
+        for (const token of openTokensForTech) {
+          const oldStatus = token.status;
+          await supabase.from("tokens").update({
+            status: "NEW",
+            assignedTo: null,
+            updatedAt: new Date().toISOString()
+          }).eq("id", token.id);
 
-        logHistory(
-          token.id,
-          oldStatus,
-          "NEW",
-          "system",
-          "Auto Re-routing Engine",
-          "system",
-          "Technician toggled leave. Token auto-returned to queue."
-        );
-      });
-      db.saveTokens(tokens);
+          await logHistory(
+            token.id,
+            oldStatus,
+            "NEW",
+            "system",
+            "Auto Re-routing Engine",
+            "system",
+            "Technician toggled leave. Token auto-returned to queue."
+          );
+        }
+      }
     }
   }
 
-  statuses[idx].currentStatus = nextStatus;
-  db.saveTechStatuses(statuses);
+  await supabase.from("tech_statuses").update({ currentStatus: nextStatus }).eq("userId", techId);
 
   if (nextStatus === "available") {
     // Check queue immediately
-    checkUnassignedQueue(statuses[idx].department);
+    await checkUnassignedQueue(statuses[idx].department);
   }
 
   return { success: true, message: `Technician status updated to ${nextStatus}` };

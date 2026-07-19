@@ -22,7 +22,7 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications" },
-        (payload) => {
+        (payload: any) => {
           const latest = payload.new;
           setToastMessage(`[${latest.channel.toUpperCase()}] to ${latest.recipient}: ${latest.message}`);
         }
