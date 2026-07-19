@@ -44,46 +44,33 @@ export function LoginPortal({ onLoginSuccess, onComplainantAccess }: LoginPortal
 
     setIsLoading(true);
 
-    // Fetch users from Supabase and verify
-    (async () => {
-      try {
-        const users = await db.getUsers();
-        const matchedUser = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+    // Simulate network delay for realism
+    setTimeout(() => {
+      const users = db.getUsers();
+      const matchedUser = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
 
-        if (!matchedUser) {
-          setErrorMsg("Account email not registered in roster.");
-          setIsLoading(false);
-          return;
-        }
-
-        if (matchedUser.status === "inactive") {
-          setErrorMsg("This roster account is inactive/resigned.");
-          setIsLoading(false);
-          return;
-        }
-
-        let isAuthorized = false;
-        if (matchedUser.role === "technician") {
-          // For technicians, password is exact mobile number
-          isAuthorized = password === matchedUser.phone;
-        } else if (matchedUser.role === "admin" || matchedUser.role === "dispatcher") {
-          // For admins/dispatchers, password is mobile number OR demo password
-          isAuthorized = password === matchedUser.phone || password === (DEMO_PASSWORDS[matchedUser.role] || "admin123");
-        }
-
-        if (!isAuthorized) {
-          setErrorMsg("Incorrect password. Please verify credentials.");
-          setIsLoading(false);
-          return;
-        }
-
+      if (!matchedUser) {
+        setErrorMsg("Account email not registered in roster.");
         setIsLoading(false);
-        onLoginSuccess(matchedUser);
-      } catch (err) {
-        setErrorMsg("Failed to connect to authentication server.");
-        setIsLoading(false);
+        return;
       }
-    })();
+
+      if (matchedUser.status === "inactive") {
+        setErrorMsg("This roster account is inactive/resigned.");
+        setIsLoading(false);
+        return;
+      }
+
+      const correctPassword = DEMO_PASSWORDS[matchedUser.role] || "tech123";
+      if (password !== correctPassword) {
+        setErrorMsg("Incorrect password. Please verify credentials.");
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(false);
+      onLoginSuccess(matchedUser);
+    }, 400);
   }, [email, password, onLoginSuccess]);
 
   const handleUseCredential = useCallback((demoEmail: string, demoPass: string) => {
@@ -248,22 +235,22 @@ export function LoginPortal({ onLoginSuccess, onComplainantAccess }: LoginPortal
                 ))}
 
                 <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
-                  <span className="section-label mb-2 block">Technicians (Pass: Mobile Number)</span>
+                  <span className="section-label mb-2 block">Technicians (Pass: tech123)</span>
                   <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto">
                     {[
-                      { name: "sarfaraj sahil", email: "sarfarajsahil@gmail.com", dept: "IT Helpdesk", phone: "9430917757" },
-                      { name: "partham", email: "parthm@gmail.com", dept: "IT Helpdesk", phone: "8826631892" },
-                      { name: "Chandrakanta jena", email: "Chandrakantajena@gmail.com", dept: "IT Helpdesk", phone: "8929807604" },
-                      { name: "Shivam", email: "shivam@gmail.com", dept: "IT Helpdesk", phone: "8700378701" },
+                      { name: "Aman Sharma", email: "aman.s@aai.aero", dept: "IT Helpdesk" },
+                      { name: "Neha Gupta", email: "neha.g@aai.aero", dept: "IT Helpdesk" },
+                      { name: "Rohan Das", email: "rohan.d@aai.aero", dept: "IT Helpdesk" },
+                      { name: "Sunita Rao", email: "sunita.r@aai.aero", dept: "HVAC" },
                     ].map((tech) => (
                       <button
                         key={tech.email}
-                        onClick={() => handleUseCredential(tech.email, tech.phone)}
+                        onClick={() => handleUseCredential(tech.email, "tech123")}
                         className="card-interactive p-2.5 flex items-center justify-between text-left"
                       >
                         <div>
                           <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{tech.name}</span>
-                          <span className="text-[9px] text-slate-550 dark:text-slate-400 block">{tech.email} (Pass: {tech.phone})</span>
+                          <span className="text-[9px] text-slate-500 dark:text-slate-400 block">{tech.email}</span>
                         </div>
                         <span className="badge-slate flex items-center gap-0.5">
                           <HardHat size={8} /> {tech.dept}

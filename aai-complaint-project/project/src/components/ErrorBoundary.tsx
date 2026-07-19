@@ -29,8 +29,18 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   handleResetAndReload = () => {
-    // Clear theme UI preference and reload
-    localStorage.removeItem("cts_theme");
+    // Clear all app data
+    const keysToRemove = [
+      "cts_users",
+      "cts_tokens",
+      "cts_tech_statuses",
+      "cts_token_history",
+      "cts_assignment_logs",
+      "cts_last_assigned_pointers",
+      "cts_notifications",
+      "cts_app_version",
+    ];
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
     window.location.reload();
   };
 

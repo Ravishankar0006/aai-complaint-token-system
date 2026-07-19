@@ -21,7 +21,7 @@ import confetti from "canvas-confetti";
 export function ComplainantPortal() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeTab, setActiveTab] = useState<"submit" | "track">("submit");
-
+  
   // Submit Form State
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
@@ -41,7 +41,7 @@ export function ComplainantPortal() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [rating, setRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState("");
-
+  
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [disputeReason, setDisputeReason] = useState("");
 
@@ -96,7 +96,7 @@ export function ComplainantPortal() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !contact.trim() || !description.trim()) {
       setErrorMsg("All fields are mandatory");
@@ -105,136 +105,98 @@ export function ComplainantPortal() {
     setErrorMsg("");
 
     const photoUrl = mockPhoto || undefined;
-    try {
-      const res = await createComplaint(name, contact, category, description, photoUrl);
-      if (res.success) {
-        setSubmitSuccess(res.token);
-        triggerConfetti();
-        // Clear fields
-        setName("");
-        setContact("");
-        setDescription("");
-        setMockPhoto(null);
-      }
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Failed to submit complaint.");
+    const res = createComplaint(name, contact, category, description, photoUrl);
+    if (res.success) {
+      setSubmitSuccess(res.token);
+      triggerConfetti();
+      // Clear fields
+      setName("");
+      setContact("");
+      setDescription("");
+      setMockPhoto(null);
     }
   };
 
-  const handleTrack = async (e?: React.FormEvent) => {
+  const handleTrack = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setTrackError("");
     if (!searchTrackingId.trim()) return;
 
-    try {
-      const tokens = await db.getTokens();
-      const token = tokens.find(
-        (t) => t.trackingId.toLowerCase() === searchTrackingId.trim().toLowerCase()
-      );
+    const tokens = db.getTokens();
+    const token = tokens.find(
+      (t) => t.trackingId.toLowerCase() === searchTrackingId.trim().toLowerCase()
+    );
 
-      if (token) {
-        setTrackedToken(token);
-        // Fetch history for this token
-        const allHistory = await db.getHistory();
-        const history = allHistory.filter((h) => h.tokenId === token.id);
-        // Sort oldest to newest for timeline
-        const sortedHistory = [...history].sort(
-          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        );
-        setTokenHistory(sortedHistory);
-      } else {
-        setTrackedToken(null);
-        setTokenHistory([]);
-        setTrackError("No ticket found with this tracking ID");
-      }
-    } catch (err) {
-      console.error(err);
-      setTrackError("Failed to fetch ticket data.");
+    if (token) {
+      setTrackedToken(token);
+      // Fetch history for this token
+      const history = db.getHistory().filter((h) => h.tokenId === token.id);
+      // Sort oldest to newest for timeline
+      const sortedHistory = [...history].sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+      setTokenHistory(sortedHistory);
+    } else {
+      setTrackedToken(null);
+      setTokenHistory([]);
+      setTrackError("No ticket found with this tracking ID");
     }
   };
 
   // Helper to refresh current tracked token details
-  const refreshTrackedToken = async (tid: string) => {
-    try {
-      const tokens = await db.getTokens();
-      const token = tokens.find((t) => t.trackingId === tid);
-      if (token) {
-        setTrackedToken(token);
-        const allHistory = await db.getHistory();
-        const history = allHistory.filter((h) => h.tokenId === token.id);
-        const sortedHistory = [...history].sort(
-          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        );
-        setTokenHistory(sortedHistory);
-      }
-    } catch (err) {
-      console.error(err);
+  const refreshTrackedToken = (tid: string) => {
+    const tokens = db.getTokens();
+    const token = tokens.find((t) => t.trackingId === tid);
+    if (token) {
+      setTrackedToken(token);
+      const history = db.getHistory().filter((h) => h.tokenId === token.id);
+      const sortedHistory = [...history].sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+      setTokenHistory(sortedHistory);
     }
   };
 
-  useEffect(() => {
-    const handleUpdate = () => {
-      if (trackedToken) {
-        refreshTrackedToken(trackedToken.trackingId);
-      }
-    };
-    window.addEventListener("cts_db_updated", handleUpdate);
-    return () => window.removeEventListener("cts_db_updated", handleUpdate);
-  }, [trackedToken?.trackingId]);
-
-  const handleVerifyClose = async () => {
+  const handleVerifyClose = () => {
     if (!trackedToken) return;
-    try {
-      const res = await updateTokenStatus(
-        trackedToken.id,
-        "VERIFIED_CLOSED",
-        "public",
-        trackedToken.complainantName,
-        "complainant",
-        {
-          rating,
-          ratingComment: feedbackComment
-        }
-      );
-
-      if (res.success) {
-        triggerConfetti();
-        setShowFeedbackModal(false);
-        await refreshTrackedToken(trackedToken.trackingId);
-        // Reset comments
-        setFeedbackComment("");
-      } else {
-        alert(res.message);
+    const res = updateTokenStatus(
+      trackedToken.id,
+      "VERIFIED_CLOSED",
+      "public",
+      trackedToken.complainantName,
+      "complainant",
+      {
+        rating,
+        ratingComment: feedbackComment
       }
-    } catch (err) {
-      console.error(err);
+    );
+
+    if (res.success) {
+      triggerConfetti();
+      setShowFeedbackModal(false);
+      refreshTrackedToken(trackedToken.trackingId);
+      // Reset comments
+      setFeedbackComment("");
     }
   };
 
-  const handleDispute = async () => {
+  const handleDispute = () => {
     if (!trackedToken || !disputeReason.trim()) return;
-    try {
-      const res = await updateTokenStatus(
-        trackedToken.id,
-        "ASSIGNED",
-        "public",
-        trackedToken.complainantName,
-        "complainant",
-        {
-          disputeReason: disputeReason.trim(),
-        }
-      );
-
-      if (res.success) {
-        setShowDisputeModal(false);
-        await refreshTrackedToken(trackedToken.trackingId);
-        setDisputeReason("");
-      } else {
-        alert(res.message);
+    const res = updateTokenStatus(
+      trackedToken.id,
+      "ASSIGNED",
+      "public",
+      trackedToken.complainantName,
+      "complainant",
+      {
+        disputeReason: disputeReason.trim(),
       }
-    } catch (err) {
-      console.error(err);
+    );
+
+    if (res.success) {
+      setShowDisputeModal(false);
+      refreshTrackedToken(trackedToken.trackingId);
+      setDisputeReason("");
     }
   };
 
@@ -288,10 +250,11 @@ export function ComplainantPortal() {
               setActiveTab("submit");
               setSubmitSuccess(null);
             }}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === "submit"
-              ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm"
-              : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-              }`}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              activeTab === "submit"
+                ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+            }`}
           >
             File Complaint
           </button>
@@ -300,10 +263,11 @@ export function ComplainantPortal() {
               setActiveTab("track");
               setSubmitSuccess(null);
             }}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === "track"
-              ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm"
-              : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-              }`}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              activeTab === "track"
+                ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+            }`}
           >
             Track Status
           </button>
@@ -382,7 +346,7 @@ export function ComplainantPortal() {
                     <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Complainant Name</label>
                     <input
                       type="text"
-                      placeholder="e.g. Abcd"
+                      placeholder="e.g. Captain Arpit"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
@@ -393,7 +357,7 @@ export function ComplainantPortal() {
                     <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Contact Email / Phone</label>
                     <input
                       type="text"
-                      placeholder="e.g. abcd@aai.aero.in"
+                      placeholder="e.g. arpit.air@indigo.in"
                       value={contact}
                       onChange={(e) => setContact(e.target.value)}
                       className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-blue-500 transition-colors"
@@ -463,7 +427,7 @@ export function ComplainantPortal() {
                           Drag & drop incident photo here, or <span className="text-blue-500 hover:underline">browse</span>
                         </span>
                         <span className="text-[10px] text-slate-400">Supports JPEG, PNG up to 2MB</span>
-
+                        
                         <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
@@ -682,14 +646,15 @@ export function ComplainantPortal() {
                       {tokenHistory.map((h, i) => (
                         <div key={h.id} className="relative">
                           {/* Dot indicator */}
-                          <div className={`absolute -left-[31px] top-1 p-1 rounded-full border ${i === tokenHistory.length - 1
-                            ? "bg-blue-500 border-blue-400 shadow-md ring-4 ring-blue-500/20"
-                            : h.toStatus === "RESOLVED"
+                          <div className={`absolute -left-[31px] top-1 p-1 rounded-full border ${
+                            i === tokenHistory.length - 1
+                              ? "bg-blue-500 border-blue-400 shadow-md ring-4 ring-blue-500/20"
+                              : h.toStatus === "RESOLVED"
                               ? "bg-emerald-500 border-emerald-400"
                               : h.toStatus === "ON_HOLD"
-                                ? "bg-amber-500 border-amber-400"
-                                : "bg-slate-700 border-slate-800"
-                            }`}>
+                              ? "bg-amber-500 border-amber-400"
+                              : "bg-slate-700 border-slate-800"
+                          }`}>
                             <div className="h-1.5 w-1.5 rounded-full" />
                           </div>
 

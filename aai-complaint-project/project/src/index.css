@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Prevent FOUT by setting fallback font metrics */
+    font-display: swap;
+  }
+
+  body {
+    @apply bg-airport-bg text-slate-100 antialiased font-sans selection:bg-blue-500/30 selection:text-blue-200;
+  }
+
+  /* Focus ring for accessibility */
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-blue-500;
+  }
+
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Glass morphism panels */
+  .glass-panel {
+    @apply bg-slate-950/50 backdrop-blur-lg border border-slate-800/60 shadow-elevated;
+  }
+
+  .glass-panel-hover {
+    @apply transition-all duration-300 hover:border-blue-500/25 hover:bg-slate-950/60 hover:shadow-glow-blue;
+  }
+
+  /* Card system */
+  .card {
+    @apply bg-white dark:bg-airport-card border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-card transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-700;
+  }
+
+  .card-interactive {
+    @apply card card-hover cursor-pointer active:scale-[0.99];
+  }
+
+  /* Button system */
+  .btn-primary {
+    @apply py-2.5 px-5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-sm rounded-xl transition-all duration-150 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply py-2.5 px-5 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-xl transition-all duration-150 border border-slate-200 dark:border-slate-800 focus-visible:ring-2 focus-visible:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply py-2.5 px-5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-sm rounded-xl transition-all duration-150 shadow-lg shadow-rose-600/20 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-success {
+    @apply py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-xl transition-all duration-150 shadow-lg shadow-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply py-2 px-3 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 font-semibold text-sm rounded-lg transition-all duration-150;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 transition-all duration-150 border border-transparent hover:border-slate-200 dark:hover:border-slate-800;
+  }
+
+  /* Input system */
+  .input {
+    @apply bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-sm w-full text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all duration-150;
+  }
+
+  .input-label {
+    @apply text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider;
+  }
+
+  /* Badge system */
+  .badge {
+    @apply px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide;
+  }
+
+  .badge-blue {
+    @apply badge bg-blue-500/10 text-blue-500 border border-blue-500/20;
+  }
+
+  .badge-emerald {
+    @apply badge bg-emerald-500/10 text-emerald-500 border border-emerald-500/20;
+  }
+
+  .badge-amber {
+    @apply badge bg-amber-500/10 text-amber-500 border border-amber-500/20;
+  }
+
+  .badge-rose {
+    @apply badge bg-rose-500/10 text-rose-500 border border-rose-500/20;
+  }
+
+  .badge-purple {
+    @apply badge bg-purple-500/10 text-purple-500 border border-purple-500/20;
+  }
+
+  .badge-slate {
+    @apply badge bg-slate-500/10 text-slate-400 border border-slate-500/20;
+  }
+
+  /* Tab system */
+  .tab-group {
+    @apply flex bg-slate-100 dark:bg-slate-900/80 p-1 rounded-xl border border-slate-200 dark:border-slate-800;
+  }
+
+  .tab-item {
+    @apply px-4 py-1.5 text-xs font-bold rounded-lg transition-all duration-150 flex items-center gap-1.5;
+  }
+
+  .tab-active {
+    @apply tab-item bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm;
+  }
+
+  .tab-inactive {
+    @apply tab-item text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200;
+  }
+
+  /* Modal overlay */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4;
+  }
+
+  .modal-content {
+    @apply bg-white dark:bg-airport-card border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-elevated flex flex-col gap-5 animate-scale-in;
+  }
+
+  /* Section header */
+  .section-label {
+    @apply text-[10px] font-bold uppercase text-slate-400 tracking-[0.15em] block;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-800 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-700;
+}
+
+/* Confetti wrapper */
+.confetti-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.05) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}

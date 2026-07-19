@@ -17,40 +17,30 @@ export function LandingPage({ onSelectRole }: LandingPageProps) {
   });
 
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const tokens = await db.getTokens();
-        const active = tokens.filter(t => ["SUBMITTED", "NEW", "ASSIGNED", "IN_PROGRESS", "ON_HOLD"].includes(t.status)).length;
-        const resolved = tokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status)).length;
-        const total = tokens.length;
-        const rate = total > 0 ? `${Math.round((resolved / total) * 100)}%` : "0%";
+    const tokens = db.getTokens();
+    const active = tokens.filter(t => ["SUBMITTED", "NEW", "ASSIGNED", "IN_PROGRESS", "ON_HOLD"].includes(t.status)).length;
+    const resolved = tokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status)).length;
+    const total = tokens.length;
+    const rate = total > 0 ? `${Math.round((resolved / total) * 100)}%` : "0%";
 
-        // Calculate real SLA compliance: resolved tokens where resolvedAt < slaDueAt
-        const resolvedTokens = tokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status));
-        const withinSla = resolvedTokens.filter(t => {
-          const resolvedTime = t.resolvedAt ? new Date(t.resolvedAt).getTime() : new Date(t.updatedAt).getTime();
-          return resolvedTime <= new Date(t.slaDueAt).getTime();
-        }).length;
-        const slaRate = resolvedTokens.length > 0 ? `${Math.round((withinSla / resolvedTokens.length) * 100)}%` : "100%";
+    // Calculate real SLA compliance: resolved tokens where resolvedAt < slaDueAt
+    const resolvedTokens = tokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status));
+    const withinSla = resolvedTokens.filter(t => {
+      const resolvedTime = t.resolvedAt ? new Date(t.resolvedAt).getTime() : new Date(t.updatedAt).getTime();
+      return resolvedTime <= new Date(t.slaDueAt).getTime();
+    }).length;
+    const slaRate = resolvedTokens.length > 0 ? `${Math.round((withinSla / resolvedTokens.length) * 100)}%` : "100%";
 
-        const users = await db.getUsers();
-        const activeTechCount = users.filter(u => u.role === "technician" && u.status === "active").length;
+    const users = db.getUsers();
+    const activeTechCount = users.filter(u => u.role === "technician" && u.status === "active").length;
 
-        setStats({
-          activeTokens: active,
-          avgResolutionTime: "18m",
-          activeTechs: activeTechCount,
-          resolvedRate: rate,
-          slaCompliance: slaRate,
-        });
-      } catch (err) {
-        console.error("Error loading stats:", err);
-      }
-    };
-
-    loadStats();
-    window.addEventListener("cts_db_updated", loadStats);
-    return () => window.removeEventListener("cts_db_updated", loadStats);
+    setStats({
+      activeTokens: active,
+      avgResolutionTime: "18m",
+      activeTechs: activeTechCount,
+      resolvedRate: rate,
+      slaCompliance: slaRate,
+    });
   }, []);
 
   const cardVariants = {
