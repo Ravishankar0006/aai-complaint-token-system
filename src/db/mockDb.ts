@@ -36,7 +36,7 @@ const SEED_CATEGORIES: Category[] = [
 
 const SEED_USERS: User[] = [
   { id: "admin-1", name: "Vikas Mehra", email: "vikas.mehra@aai.aero", role: "admin", phone: "+919876543210", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString() },
-  { id: "disp-1", name: "Manager", email: "manager@aai.aero", role: "dispatcher", phone: "+919876543211", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString() },
+  { id: "disp-1", name: "Manager", email: "manager@aai.aero", role: "manager", phone: "+919876543211", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString() },
 
   // IT Helpdesk Technicians
   { id: "tech-1", name: "Aman Sharma", email: "aman.s@aai.aero", role: "technician", phone: "+919911001101", status: "active", department: "IT Helpdesk", createdAt: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString() },
@@ -502,10 +502,10 @@ export async function autoAssignToken(tokenId: string): Promise<{ assigned: bool
     "system",
     "Auto Assignment Engine",
     "system",
-    "All technicians are currently Busy or On Leave. Queued for Dispatcher."
+    "All technicians are currently Busy or On Leave. Queued for Manager."
   );
 
-  const adminUsers = users.filter((u) => u.role === "admin" || u.role === "dispatcher");
+  const adminUsers = users.filter((u) => u.role === "admin" || u.role === "manager");
   for (const admin of adminUsers) {
     await logNotification(
       tokenId,
@@ -658,7 +658,7 @@ export async function updateTokenStatus(
     return { success: false, message: "State is already identical" };
   }
 
-  const isAdminActor = actorRole === "admin" || actorRole === "dispatcher" || actorRole === "system";
+  const isAdminActor = actorRole === "admin" || actorRole === "manager" || actorRole === "system";
   if (!isValidTransition(oldStatus, newStatus, isAdminActor)) {
     return { success: false, message: `Invalid transition: ${oldStatus} to ${newStatus} is not allowed.` };
   }

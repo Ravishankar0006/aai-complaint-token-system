@@ -1,4 +1,4 @@
-export type UserRole = "complainant" | "technician" | "dispatcher" | "admin";
+export type UserRole = "complainant" | "technician" | "manager" | "admin";
 
 export type UserStatus = "active" | "inactive";
 

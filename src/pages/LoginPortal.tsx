@@ -12,7 +12,7 @@ interface LoginPortalProps {
 // Demo credentials (prototype only - clearly marked)
 const DEMO_PASSWORDS: Record<string, string> = {
   admin: "admin123",
-  dispatcher: "disp123",
+  manager: "manager123",
   technician: "tech123",
 };
 
@@ -66,8 +66,8 @@ export function LoginPortal({ onLoginSuccess, onComplainantAccess }: LoginPortal
         if (matchedUser.role === "technician") {
           // For technicians, password is exact mobile number
           isAuthorized = password === matchedUser.phone;
-        } else if (matchedUser.role === "admin" || matchedUser.role === "dispatcher") {
-          // For admins/dispatchers, password is mobile number OR demo password
+        } else if (matchedUser.role === "admin" || matchedUser.role === "manager") {
+          // For admins/managers, password is mobile number OR demo password
           isAuthorized = password === matchedUser.phone || password === (DEMO_PASSWORDS[matchedUser.role] || "admin123");
         }
 
@@ -230,7 +230,7 @@ export function LoginPortal({ onLoginSuccess, onComplainantAccess }: LoginPortal
               <div className="flex flex-col gap-2.5">
                 {[
                   { name: "Vikas Mehra", email: "vikas.mehra@aai.aero", pass: "admin123", role: "Admin", icon: Shield, color: "badge-blue" },
-                  { name: "Rajesh Sharma", email: "rajesh.sharma@aai.aero", pass: "disp123", role: "Dispatcher", icon: Shield, color: "badge-purple" },
+                  { name: "Manager", email: "manager@aai.aero", pass: "manager123", role: "Manager", icon: Shield, color: "badge-purple" },
                 ].map((acc) => (
                   <button
                     key={acc.email}

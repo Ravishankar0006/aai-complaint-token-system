@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Plane, HelpCircle, Home, LogOut, Key, Sun, Moon, Database } from "lucide-react";
 import { User, UserRole } from "../types";
 
-type NavRole = "landing" | "complainant" | "admin" | "technician" | "dispatcher" | "login";
+type NavRole = "landing" | "complainant" | "admin" | "technician" | "manager" | "login";
 
 interface NavbarProps {
   currentRole: NavRole;
@@ -39,7 +39,7 @@ export function Navbar({ currentRole, onRoleChange, currentUser, onLogout }: Nav
   const getRoleBadge = (role: UserRole) => {
     const map: Record<UserRole, { label: string; color: string }> = {
       admin: { label: "Admin", color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-      dispatcher: { label: "Dispatcher", color: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" },
+      manager: { label: "Manager", color: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" },
       technician: { label: "Technician", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
       complainant: { label: "Public", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
     };

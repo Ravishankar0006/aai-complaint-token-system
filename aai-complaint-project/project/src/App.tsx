@@ -95,7 +95,7 @@ export default function App() {
 
   const handleLoginSuccess = useCallback((user: User) => {
     setCurrentUser(user);
-    if (user.role === "admin" || user.role === "dispatcher") {
+    if (user.role === "admin" || user.role === "manager") {
       setCurrentView("admin");
     } else if (user.role === "technician") {
       setCurrentView("technician");
@@ -123,7 +123,7 @@ export default function App() {
     } else if (role === "admin" || role === "technician") {
       if (currentUser && currentUser.role === role) {
         setCurrentView(role);
-      } else if (currentUser && (currentUser.role === "admin" || currentUser.role === "dispatcher") && role === "admin") {
+      } else if (currentUser && (currentUser.role === "admin" || currentUser.role === "manager") && role === "admin") {
         setCurrentView("admin");
       } else {
         setCurrentView("login");

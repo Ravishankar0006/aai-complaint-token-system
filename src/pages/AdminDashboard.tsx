@@ -101,7 +101,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
       setTokens(freshTokens);
       const allUsers = await db.getUsers();
       setTechnicians(allUsers.filter((u) => u.role === "technician"));
-      setAdmins(allUsers.filter((u) => u.role === "admin" || u.role === "dispatcher"));
+      setAdmins(allUsers.filter((u) => u.role === "admin" || u.role === "manager"));
       setTechStatuses(await db.getTechStatuses());
 
       const logs = await db.getHistory();
@@ -1039,7 +1039,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
               <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md overflow-hidden">
                 <div className="p-5 border-b border-slate-200 dark:border-slate-800/60">
                   <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Helpdesk Admin Staff</h3>
-                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Administrators and Dispatchers with access to the Command Console.</p>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Administrators and Managers with access to the Command Console.</p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
