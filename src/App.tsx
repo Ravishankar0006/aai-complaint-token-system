@@ -11,9 +11,33 @@ import { Bell, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<"landing" | "complainant" | "login" | "technician" | "admin">("landing");
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem("cts_current_user");
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [currentView, setCurrentView] = useState<"landing" | "complainant" | "login" | "technician" | "admin">(() => {
+    const saved = localStorage.getItem("cts_current_view");
+    return (saved as any) || "landing";
+  });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem("cts_current_user", JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem("cts_current_user");
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    localStorage.setItem("cts_current_view", currentView);
+  }, [currentView]);
+
+  useEffect(() => {
+    if (!currentUser && (currentView === "admin" || currentView === "technician")) {
+      setCurrentView("login");
+    }
+  }, [currentUser, currentView]);
 
   useEffect(() => {
     // 1. Subscribe to notifications realtime channel to show toast alerts
@@ -105,6 +129,8 @@ export default function App() {
   const handleLogout = useCallback(() => {
     setCurrentUser(null);
     setCurrentView("landing");
+    localStorage.removeItem("cts_current_user");
+    localStorage.removeItem("cts_current_view");
   }, []);
 
   const handleSelectRoleFromLanding = useCallback((role: "complainant" | "technician" | "admin") => {

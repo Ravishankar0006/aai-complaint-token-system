@@ -1521,7 +1521,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
               <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-500"><AlertTriangle size={20} /></div>
               <div>
                 <h3 className="text-base font-bold text-slate-800 dark:text-white">Remove Administrator</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">This will completely delete this administrator's credentials and dashboard access.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">This will completely delete this administrator's credentials and dashboard access. The record will also be permanently deleted from Supabase and the database to free up storage space.</p>
               </div>
             </div>
             <div className="flex gap-3 justify-end mt-4">
@@ -1541,7 +1541,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
               <div>
                 <h3 className="text-base font-bold text-slate-800 dark:text-white">Delete Technician</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Are you sure you want to delete this technician from the roster? This deletes their status records. Any active tickets assigned to them will be returned to the <span className="font-bold">NEW</span> queue.
+                  Are you sure you want to delete this technician from the roster? This deletes their status records. Any active tickets assigned to them will be returned to the <span className="font-bold">NEW</span> queue. The record will also be permanently deleted from Supabase and the database to free up storage space.
                 </p>
               </div>
             </div>
@@ -1788,7 +1788,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                   {/* Danger Zone: Delete Ticket */}
                   <div className="border-t border-slate-150 dark:border-slate-800/80 pt-4 mt-2 bg-rose-500/5 p-4 rounded-2xl border border-rose-500/10">
                     <span className="text-[10px] text-rose-500 font-bold block uppercase tracking-wider mb-1">Danger Zone</span>
-                    <p className="text-[10px] text-slate-450 font-medium mb-3">Permanently delete this incident ticket and all related logs. This action is irreversible.</p>
+                    <p className="text-[10px] text-slate-450 font-medium mb-3">Permanently delete this incident ticket and all related logs. This action is irreversible. The record will also be permanently deleted from Supabase and the database to free up storage space.</p>
                     {confirmDeleteTokenId ? (
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-[10px] text-rose-500 font-bold">Are you absolutely sure?</span>
