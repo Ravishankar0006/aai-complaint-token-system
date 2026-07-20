@@ -1295,8 +1295,6 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                       })}
                     </tbody>
                   </table>
-                    </tbody>
-                  </table>
                 </div>
               </div>
             </div>
@@ -1331,7 +1329,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                   const resolvedTime = t.resolvedAt ? new Date(t.resolvedAt).getTime() : new Date(t.updatedAt).getTime();
                   return resolvedTime <= new Date(t.slaDueAt).getTime();
                 }).length;
-                const slaComplianceRate = resolvedCount > 0 ? `${Math.round((withinSla / resolvedCount) * 105)}%` : "100%";
+                const slaComplianceRate = resolvedCount > 0 ? `${Math.round((withinSla / resolvedCount) * 100)}%` : "100%";
 
                 // Avg resolution time calculations
                 let totalDuration = 0;
@@ -1374,7 +1372,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                     <div className="flex items-center justify-between bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
                       <button
                         onClick={() => setSelectedPerformanceTechId(null)}
-                        className="py-1.5 px-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-805 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-350 hover:bg-slate-202 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 font-semibold"
+                        className="py-1.5 px-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-350 hover:bg-slate-202 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 font-semibold"
                       >
                         &larr; Back to Leaderboard
                       </button>
@@ -1411,26 +1409,26 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                       <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow flex flex-col gap-1">
                         <span className="text-[10px] text-slate-455 dark:text-slate-400 font-bold uppercase tracking-wider">Tickets Assigned</span>
-                        <span className="text-2xl font-extrabold text-slate-805 dark:text-white mt-1">{totalAssigned}</span>
+                        <span className="text-2xl font-extrabold text-slate-800 dark:text-white mt-1">{totalAssigned}</span>
                         <span className="text-[9px] text-slate-400 font-medium block mt-1">Active: {activeCount} &bull; Resolved: {resolvedCount}</span>
                       </div>
 
                       <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow flex flex-col gap-1">
                         <span className="text-[10px] text-slate-455 dark:text-slate-400 font-bold uppercase tracking-wider">SLA Compliance</span>
-                        <span className="text-2xl font-extrabold text-emerald-505 mt-1">{slaComplianceRate}</span>
+                        <span className="text-2xl font-extrabold text-emerald-500 mt-1">{slaComplianceRate}</span>
                         <span className="text-[9px] text-slate-400 font-medium block mt-1">Resolved within SLA bounds</span>
                       </div>
 
                       <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow flex flex-col gap-1">
                         <span className="text-[10px] text-slate-455 dark:text-slate-400 font-bold uppercase tracking-wider">Mean Time to Resolve</span>
-                        <span className="text-2xl font-extrabold text-blue-550 mt-1">{formatDuration(avgDurationMs)}</span>
+                        <span className="text-2xl font-extrabold text-blue-500 mt-1">{formatDuration(avgDurationMs)}</span>
                         <span className="text-[9px] text-slate-400 font-medium block mt-1">Avg time from pick to resolve</span>
                       </div>
 
                       <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow flex flex-col gap-1">
                         <span className="text-[10px] text-slate-455 dark:text-slate-400 font-bold uppercase tracking-wider">Customer Rating</span>
                         <span className="text-2xl font-extrabold text-amber-500 mt-1 flex items-center gap-1">
-                          <Star size={18} className="fill-amber-505 text-amber-500" />
+                          <Star size={18} className="fill-amber-500 text-amber-500" />
                           {avgRating}
                         </span>
                         <span className="text-[9px] text-slate-400 font-medium block mt-1">Based on {ratedTokens.length} rated ticket reviews</span>
@@ -1446,8 +1444,8 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                           {[
                             { label: "Critical", count: criticalCount, color: "bg-rose-500", text: "text-rose-500" },
                             { label: "High", count: highCount, color: "bg-amber-500", text: "text-amber-500" },
-                            { label: "Medium", count: mediumCount, color: "bg-blue-500", text: "text-blue-505" },
-                            { label: "Low", count: lowCount, color: "bg-slate-505", text: "text-slate-400" },
+                            { label: "Medium", count: mediumCount, color: "bg-blue-500", text: "text-blue-500" },
+                            { label: "Low", count: lowCount, color: "bg-slate-500", text: "text-slate-400" },
                           ].map(pr => {
                             const pct = totalAssigned > 0 ? (pr.count / totalAssigned) * 100 : 0;
                             return (
@@ -1471,7 +1469,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                         <div className="overflow-x-auto max-h-64">
                           <table className="w-full text-left text-xs border-collapse">
                             <thead>
-                              <tr className="border-b border-slate-200 dark:border-slate-805 text-slate-400 font-bold bg-slate-50 dark:bg-slate-900/10">
+                              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold bg-slate-50 dark:bg-slate-900/10">
                                 <th className="p-3">Ticket ID</th>
                                 <th className="p-3">Category</th>
                                 <th className="p-3">Status</th>
@@ -1479,7 +1477,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                                 <th className="p-3 text-center">Rating</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-150 dark:divide-slate-800/60 font-semibold text-slate-705 dark:text-slate-350">
+                            <tbody className="divide-y divide-slate-150 dark:divide-slate-800/60 font-semibold text-slate-700 dark:text-slate-350">
                               {techTokens.length === 0 ? (
                                 <tr>
                                   <td colSpan={5} className="p-4 text-center text-slate-450 italic">No ticket history recorded.</td>
@@ -1508,7 +1506,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                                     </td>
                                     <td className="p-3 text-center font-extrabold text-amber-500">
                                       {token.rating ? (
-                                        <span className="flex items-center justify-center gap-0.5"><Star size={10} className="fill-amber-550" /> {token.rating}</span>
+                                        <span className="flex items-center justify-center gap-0.5"><Star size={10} className="fill-amber-500" /> {token.rating}</span>
                                       ) : "-"}
                                     </td>
                                   </tr>
@@ -1524,7 +1522,7 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
               })()
             ) : (
               // Performance Leaderboard list
-              <div className="bg-white dark:bg-[#0b0f19] border border-slate-205 dark:border-slate-805 rounded-2xl p-5 shadow-md flex flex-col gap-6">
+              <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-md flex flex-col gap-6">
                 <div>
                   <h3 className="text-base font-bold text-slate-805 dark:text-white flex items-center gap-2">
                     <Star className="text-amber-500 fill-amber-500" size={18} /> Roster Performance Leaderboard
@@ -1575,11 +1573,11 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                           </div>
 
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 bg-blue-500/10 text-blue-505 border border-blue-200 dark:border-blue-800 rounded-full flex items-center justify-center font-extrabold text-sm select-none">
+                            <div className="h-10 w-10 bg-blue-500/10 text-blue-500 border border-blue-200 dark:border-blue-800 rounded-full flex items-center justify-center font-extrabold text-sm select-none">
                               {tech.name.charAt(0)}
                             </div>
                             <div>
-                              <h4 className="text-sm font-extrabold text-slate-805 dark:text-slate-100 flex items-center gap-1.5">
+                              <h4 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                                 {tech.name}
                               </h4>
                               <span className="text-[10px] text-slate-400 block font-semibold">
@@ -1590,16 +1588,16 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
 
                           <div className="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-900/40 p-2.5 border border-slate-200/60 dark:border-slate-800 rounded-xl text-center text-xs">
                             <div>
-                              <span className="text-[8px] text-slate-405 uppercase font-bold block">Resolved</span>
-                              <span className="text-xs font-bold text-slate-707 block mt-1">{resolvedCount}</span>
+                              <span className="text-[8px] text-slate-400 uppercase font-bold block">Resolved</span>
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block mt-1">{resolvedCount}</span>
                             </div>
                             <div>
-                              <span className="text-[8px] text-slate-405 uppercase font-bold block">SLA Rate</span>
+                              <span className="text-[8px] text-slate-400 uppercase font-bold block">SLA Rate</span>
                               <span className="text-xs font-bold text-emerald-500 block mt-1">{slaComplianceRate}</span>
                             </div>
                             <div>
-                              <span className="text-[8px] text-slate-405 uppercase font-bold block">Rating</span>
-                              <span className="text-xs font-extrabold text-amber-505 block mt-1 flex items-center justify-center gap-0.5">
+                              <span className="text-[8px] text-slate-400 uppercase font-bold block">Rating</span>
+                              <span className="text-xs font-extrabold text-amber-500 block mt-1 flex items-center justify-center gap-0.5">
                                 <Star size={10} className="fill-amber-500" /> {avgRating}
                               </span>
                             </div>
