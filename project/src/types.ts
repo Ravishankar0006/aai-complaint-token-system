@@ -124,9 +124,11 @@ export function generateId(prefix: string): string {
 }
 
 // Utility: generate tracking IDs with collision avoidance
-let _trackingCounter = 0;
-export function generateTrackingId(): string {
-  _trackingCounter++;
-  const num = (Date.now() % 90000) + 10000 + _trackingCounter;
-  return `TKN-${num}`;
+export function generateTrackingId(todayCount: number = 0): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const date = String(now.getDate()).padStart(2, "0");
+  const seq = String(todayCount + 1).padStart(4, "0");
+  return `TKN-${year}${month}${date}-${seq}`;
 }

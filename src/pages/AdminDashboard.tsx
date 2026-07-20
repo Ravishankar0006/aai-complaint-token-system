@@ -40,7 +40,8 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
   const [historyLogs, setHistoryLogs] = useState<TokenHistory[]>([]);
 
   // Navigation tabs: board (Kanban), roster (Staff Roster), audit (Logs), reports (Analytics)
-  const [activeSubTab, setActiveSubTab] = useState<"board" | "roster" | "audit" | "reports">("board");
+  const [activeSubTab, setActiveSubTab] = useState<"board" | "roster" | "audit" | "reports" | "performance">("board");
+  const [selectedPerformanceTechId, setSelectedPerformanceTechId] = useState<string | null>(null);
 
   // Roster Sub-Toggle: technicians vs admins
   const [rosterType, setRosterType] = useState<"technicians" | "admins">("technicians");
@@ -633,6 +634,18 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                 }`}
             >
               <BarChart3 size={14} /> Analytics
+            </button>
+            <button
+              onClick={() => {
+                setActiveSubTab("performance");
+                setSelectedPerformanceTechId(null);
+              }}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${activeSubTab === "performance"
+                ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                }`}
+            >
+              <Star size={14} className={activeSubTab === "performance" ? "text-amber-500 fill-amber-500" : ""} /> Performance
             </button>
           </div>
 
@@ -1285,6 +1298,321 @@ export function AdminDashboard({ currentUser }: AdminDashboardProps) {
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {activeSubTab === "performance" && (
+          <motion.div
+            key="performance"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex flex-col gap-6"
+          >
+            {selectedPerformanceTechId ? (
+              // Technician Detailed Performance Report
+              (() => {
+                const tech = technicians.find(t => t.id === selectedPerformanceTechId);
+                if (!tech) return <p className="text-slate-400">Technician not found.</p>;
+
+                const statusObj = techStatuses.find((s) => s.userId === tech.id);
+                const currentStatus = statusObj ? statusObj.currentStatus : "available";
+
+                const techTokens = tokens.filter(t => t.assignedTo === tech.id);
+                const totalAssigned = techTokens.length;
+                const resolvedTokens = techTokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status));
+                const resolvedCount = resolvedTokens.length;
+                const activeCount = techTokens.filter(t => ["ASSIGNED", "IN_PROGRESS", "ON_HOLD"].includes(t.status)).length;
+
+                // SLA compliance calculations
+                const withinSla = resolvedTokens.filter(t => {
+                  const resolvedTime = t.resolvedAt ? new Date(t.resolvedAt).getTime() : new Date(t.updatedAt).getTime();
+                  return resolvedTime <= new Date(t.slaDueAt).getTime();
+                }).length;
+                const slaComplianceRate = resolvedCount > 0 ? `${Math.round((withinSla / resolvedCount) * 100)}%` : "100%";
+
+                // Avg resolution time calculations
+                let totalDuration = 0;
+                let durationCount = 0;
+                resolvedTokens.forEach(t => {
+                  if (t.resolvedAt) {
+                    const start = t.assignedAt ? new Date(t.assignedAt).getTime() : new Date(t.createdAt).getTime();
+                    const duration = new Date(t.resolvedAt).getTime() - start;
+                    if (duration > 0) {
+                      totalDuration += duration;
+                      durationCount++;
+                    }
+                  }
+                });
+                const avgDurationMs = durationCount > 0 ? totalDuration / durationCount : 0;
+                const formatDuration = (ms: number) => {
+                  if (ms <= 0) return "N/A";
+                  const mins = Math.floor(ms / (60 * 1000));
+                  if (mins < 60) return `${mins} mins`;
+                  const hrs = Math.floor(mins / 60);
+                  const remMins = mins % 60;
+                  return `${hrs}h ${remMins}m`;
+                };
+
+                // Customer rating calculations
+                const ratedTokens = resolvedTokens.filter(t => t.rating !== undefined);
+                const avgRating = ratedTokens.length > 0
+                  ? (ratedTokens.reduce((acc, t) => acc + (t.rating || 0), 0) / ratedTokens.length).toFixed(1)
+                  : "N/A";
+
+                // Priority breakdown count
+                const criticalCount = techTokens.filter(t => t.priority === "CRITICAL").length;
+                const highCount = techTokens.filter(t => t.priority === "HIGH").length;
+                const mediumCount = techTokens.filter(t => t.priority === "MEDIUM").length;
+                const lowCount = techTokens.filter(t => t.priority === "LOW").length;
+
+                return (
+                  <div className="flex flex-col gap-6">
+                    {/* Back header */}
+                    <div className="flex items-center justify-between bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
+                      <button
+                        onClick={() => setSelectedPerformanceTechId(null)}
+                        className="py-1.5 px-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-350 hover:bg-slate-202 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 font-semibold"
+                      >
+                        &larr; Back to Leaderboard
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${
+                          currentStatus === "available" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
+                          currentStatus === "busy" ? "bg-purple-500/10 text-purple-500 border border-purple-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                        }`}>
+                          {currentStatus.replace("_", " ").toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Technician Profile Card */}
+                    <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-md flex flex-col md:flex-row items-center gap-6">
+                      <div className="h-16 w-16 bg-blue-500/10 text-blue-500 border border-blue-200 dark:border-blue-800 rounded-full flex items-center justify-center font-extrabold text-2xl select-none shrink-0">
+                        {tech.name.charAt(0)}
+                      </div>
+                      <div className="flex-grow text-center md:text-left">
+                        <h2 className="text-xl font-bold text-slate-850 dark:text-white">{tech.name}</h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">
+                          Department: {tech.department} &bull; Email: {tech.email} &bull; Phone: {tech.phone}
+                        </p>
+                        <div className="mt-3.5 flex flex-wrap justify-center md:justify-start gap-2">
+                          {Number(avgRating) >= 4.5 && <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-wider">Top Rated</span>}
+                          {parseFloat(slaComplianceRate) >= 90 && <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider">SLA Champion</span>}
+                          {resolvedCount >= 5 && <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-500/10 text-blue-500 border border-blue-500/20 uppercase tracking-wider">High Performer</span>}
+                          {resolvedCount === 0 && <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-slate-500/10 text-slate-400 border border-slate-500/20 uppercase tracking-wider">Rookie</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* KPI Metrics row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                      <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow flex flex-col gap-1">
+                        <span className="text-[10px] text-slate-455 dark:text-slate-400 font-bold uppercase tracking-wider">Tickets Assigned</span>
+                        <span className="text-2xl font-extrabold text-slate-800 dark:text-white mt-1">{totalAssigned}</span>
+                        <span className="text-[9px] text-slate-400 font-medium block mt-1">Active: {activeCount} &bull; Resolved: {resolvedCount}</span>
+                      </div>
+
+                      <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow flex flex-col gap-1">
+                        <span className="text-[10px] text-slate-455 dark:text-slate-400 font-bold uppercase tracking-wider">SLA Compliance</span>
+                        <span className="text-2xl font-extrabold text-emerald-500 mt-1">{slaComplianceRate}</span>
+                        <span className="text-[9px] text-slate-400 font-medium block mt-1">Resolved within SLA bounds</span>
+                      </div>
+
+                      <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow flex flex-col gap-1">
+                        <span className="text-[10px] text-slate-455 dark:text-slate-400 font-bold uppercase tracking-wider">Mean Time to Resolve</span>
+                        <span className="text-2xl font-extrabold text-blue-500 mt-1">{formatDuration(avgDurationMs)}</span>
+                        <span className="text-[9px] text-slate-400 font-medium block mt-1">Avg time from pick to resolve</span>
+                      </div>
+
+                      <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow flex flex-col gap-1">
+                        <span className="text-[10px] text-slate-455 dark:text-slate-400 font-bold uppercase tracking-wider">Customer Rating</span>
+                        <span className="text-2xl font-extrabold text-amber-500 mt-1 flex items-center gap-1">
+                          <Star size={18} className="fill-amber-500 text-amber-500" />
+                          {avgRating}
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-medium block mt-1">Based on {ratedTokens.length} rated ticket reviews</span>
+                      </div>
+                    </div>
+
+                    {/* Chart & Stats distribution split */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Priority distribution visual */}
+                      <div className="lg:col-span-1 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow flex flex-col gap-4">
+                        <span className="text-xs font-extrabold uppercase text-slate-400 tracking-wider block">Ticket Priority Distribution</span>
+                        <div className="flex flex-col gap-3.5 justify-center py-2">
+                          {[
+                            { label: "Critical", count: criticalCount, color: "bg-rose-500", text: "text-rose-500" },
+                            { label: "High", count: highCount, color: "bg-amber-500", text: "text-amber-500" },
+                            { label: "Medium", count: mediumCount, color: "bg-blue-500", text: "text-blue-500" },
+                            { label: "Low", count: lowCount, color: "bg-slate-500", text: "text-slate-400" },
+                          ].map(pr => {
+                            const pct = totalAssigned > 0 ? (pr.count / totalAssigned) * 100 : 0;
+                            return (
+                              <div key={pr.label} className="flex flex-col gap-1">
+                                <div className="flex justify-between text-[10px] font-bold text-slate-550 dark:text-slate-400">
+                                  <span>{pr.label.toUpperCase()}</span>
+                                  <span className={pr.text}>{pr.count} ({Math.round(pct)}%)</span>
+                                </div>
+                                <div className="h-2 w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-200/20">
+                                  <div className={`h-full rounded-full ${pr.color}`} style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Ticket History List */}
+                      <div className="lg:col-span-2 bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow flex flex-col gap-4">
+                        <span className="text-xs font-extrabold uppercase text-slate-400 tracking-wider block">Recent Ticket History</span>
+                        <div className="overflow-x-auto max-h-64">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold bg-slate-50 dark:bg-slate-900/10">
+                                <th className="p-3">Ticket ID</th>
+                                <th className="p-3">Category</th>
+                                <th className="p-3">Status</th>
+                                <th className="p-3">Priority</th>
+                                <th className="p-3 text-center">Rating</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-150 dark:divide-slate-800/60 font-semibold text-slate-700 dark:text-slate-350">
+                              {techTokens.length === 0 ? (
+                                <tr>
+                                  <td colSpan={5} className="p-4 text-center text-slate-450 italic">No ticket history recorded.</td>
+                                </tr>
+                              ) : (
+                                techTokens.map(token => (
+                                  <tr
+                                    key={token.id}
+                                    onClick={() => handleOpenManageModal(token)}
+                                    className="hover:bg-slate-50 dark:hover:bg-slate-900/20 transition-colors cursor-pointer"
+                                  >
+                                    <td className="p-3 text-blue-500 font-extrabold">{token.trackingId}</td>
+                                    <td className="p-3 whitespace-nowrap">{token.category}</td>
+                                    <td className="p-3">
+                                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                        token.status === "RESOLVED" || token.status === "VERIFIED_CLOSED" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
+                                        token.status === "ON_HOLD" ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                                      }`}>
+                                        {token.status.replace("_", " ")}
+                                      </span>
+                                    </td>
+                                    <td className="p-3">
+                                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${getPriorityColors(token.priority).badge}`}>
+                                        {token.priority}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-center font-extrabold text-amber-500">
+                                      {token.rating ? (
+                                        <span className="flex items-center justify-center gap-0.5"><Star size={10} className="fill-amber-500" /> {token.rating}</span>
+                                      ) : "-"}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              // Performance Leaderboard list
+              <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-md flex flex-col gap-6">
+                <div>
+                  <h3 className="text-base font-bold text-slate-805 dark:text-white flex items-center gap-2">
+                    <Star className="text-amber-500 fill-amber-500" size={18} /> Roster Performance Leaderboard
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Ranked by resolved ticket volume and customer ratings.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {(() => {
+                    const sortedTechs = [...technicians].sort((a, b) => {
+                      const aTokens = tokens.filter(t => t.assignedTo === a.id);
+                      const bTokens = tokens.filter(t => t.assignedTo === b.id);
+                      const aClosed = aTokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status)).length;
+                      const bClosed = bTokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status)).length;
+                      return bClosed - aClosed; // Sort descending
+                    });
+
+                    return sortedTechs.map((tech, index) => {
+                      const statusObj = techStatuses.find((s) => s.userId === tech.id);
+                      const currentStatus = statusObj ? statusObj.currentStatus : "available";
+
+                      const techTokens = tokens.filter(t => t.assignedTo === tech.id);
+                      const resolvedCount = techTokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status)).length;
+                      const ratedTokens = techTokens.filter(t => t.rating !== undefined);
+                      const avgRating = ratedTokens.length > 0
+                        ? (ratedTokens.reduce((acc, t) => acc + (t.rating || 0), 0) / ratedTokens.length).toFixed(1)
+                        : "N/A";
+
+                      const withinSla = techTokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status)).filter(t => {
+                        const resolvedTime = t.resolvedAt ? new Date(t.resolvedAt).getTime() : new Date(t.updatedAt).getTime();
+                        return resolvedTime <= new Date(t.slaDueAt).getTime();
+                      }).length;
+                      const slaComplianceRate = resolvedCount > 0 ? `${Math.round((withinSla / resolvedCount) * 100)}%` : "100%";
+
+                      return (
+                        <div
+                          key={tech.id}
+                          onClick={() => setSelectedPerformanceTechId(tech.id)}
+                          className="card-interactive p-5 flex flex-col gap-4 border border-slate-200 dark:border-slate-800/80 hover:border-slate-500/30 transition-all shadow-md relative"
+                        >
+                          {/* Rank Ribbon */}
+                          <div className={`absolute top-0 right-4 transform -translate-y-1/2 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold text-white ${
+                            index === 0 ? "bg-gradient-to-r from-amber-500 to-yellow-500 shadow-md shadow-amber-500/20" :
+                            index === 1 ? "bg-slate-400 shadow-sm" :
+                            index === 2 ? "bg-amber-700 shadow-sm" : "bg-slate-655 dark:bg-slate-800"
+                          }`}>
+                            RANK #{index + 1}
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 bg-blue-500/10 text-blue-500 border border-blue-200 dark:border-blue-800 rounded-full flex items-center justify-center font-extrabold text-sm select-none">
+                              {tech.name.charAt(0)}
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                                {tech.name}
+                              </h4>
+                              <span className="text-[10px] text-slate-400 block font-semibold">
+                                {tech.department} &bull; {currentStatus.toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-900/40 p-2.5 border border-slate-200/60 dark:border-slate-800 rounded-xl text-center text-xs">
+                            <div>
+                              <span className="text-[8px] text-slate-400 uppercase font-bold block">Resolved</span>
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block mt-1">{resolvedCount}</span>
+                            </div>
+                            <div>
+                              <span className="text-[8px] text-slate-400 uppercase font-bold block">SLA Rate</span>
+                              <span className="text-xs font-bold text-emerald-500 block mt-1">{slaComplianceRate}</span>
+                            </div>
+                            <div>
+                              <span className="text-[8px] text-slate-400 uppercase font-bold block">Rating</span>
+                              <span className="text-xs font-extrabold text-amber-500 block mt-1 flex items-center justify-center gap-0.5">
+                                <Star size={10} className="fill-amber-500" /> {avgRating}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end text-[9px] text-blue-500 font-extrabold hover:underline">
+                            View Performance Report &rarr;
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

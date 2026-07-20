@@ -775,7 +775,20 @@ export async function createComplaint(
   const department = categoryObj ? categoryObj.department : "IT Helpdesk";
   const slaHours = categoryObj ? categoryObj.defaultSlaHours : 8;
 
-  const trackingId = generateTrackingId();
+  let todayCount = 0;
+  try {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const { data: todayTokens } = await supabase
+      .from("tokens")
+      .select("id")
+      .gte("createdAt", `${todayStr}T00:00:00.000Z`)
+      .lte("createdAt", `${todayStr}T23:59:59.999Z`);
+    todayCount = todayTokens?.length || 0;
+  } catch (err) {
+    console.error("Error fetching daily token count:", err);
+  }
+
+  const trackingId = generateTrackingId(todayCount);
   const tokenId = generateId("token");
 
   const newToken: Token = {
