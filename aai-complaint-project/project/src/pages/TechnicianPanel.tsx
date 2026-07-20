@@ -5,6 +5,7 @@ import {
   History,
   TrendingUp,
   Star,
+  Trophy,
   Play,
   Pause,
   Check,
@@ -31,7 +32,11 @@ export function TechnicianPanel({ techId }: TechnicianPanelProps) {
   const [techStatus, setTechStatus] = useState<TechnicianStatus | null>(null);
   const [activeQueue, setActiveQueue] = useState<Token[]>([]);
   const [historyQueue, setHistoryQueue] = useState<Token[]>([]);
-  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
+  const [activeTab, setActiveTab] = useState<"queue" | "history" | "leaderboard">("queue");
+
+  const [allTechnicians, setAllTechnicians] = useState<UserType[]>([]);
+  const [allTokens, setAllTokens] = useState<Token[]>([]);
+  const [allTechStatuses, setAllTechStatuses] = useState<TechnicianStatus[]>([]);
 
   // Hold Modal States
   const [showHoldModal, setShowHoldModal] = useState<Token | null>(null);
@@ -54,6 +59,11 @@ export function TechnicianPanel({ techId }: TechnicianPanelProps) {
 
       const currentUser = users.find((u) => u.id === techId) || null;
       const currentStatus = statuses.find((s) => s.userId === techId) || null;
+
+      const techList = users.filter((u) => u.role === "technician");
+      setAllTechnicians(techList);
+      setAllTechStatuses(statuses);
+      setAllTokens(tokens);
 
       setTechUser(currentUser);
       setTechStatus(currentStatus);
@@ -170,6 +180,14 @@ export function TechnicianPanel({ techId }: TechnicianPanelProps) {
       ? (ratedTasks.reduce((acc, t) => acc + (t.rating || 0), 0) / ratedTasks.length).toFixed(1)
       : "N/A";
 
+  // Rank calculations
+  const sortedTechnicians = [...allTechnicians].sort((a, b) => {
+    const aClosed = allTokens.filter(t => t.assignedTo === a.id && ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status)).length;
+    const bClosed = allTokens.filter(t => t.assignedTo === b.id && ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status)).length;
+    return bClosed - aClosed;
+  });
+  const myRank = sortedTechnicians.findIndex(t => t.id === techId) + 1;
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "CRITICAL":
@@ -246,6 +264,12 @@ export function TechnicianPanel({ techId }: TechnicianPanelProps) {
                   <Star size={16} className="text-amber-500 fill-amber-500" /> {avgRating}
                 </span>
               </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block tracking-wider">Rank</span>
+                <span className="text-lg font-extrabold text-amber-500 flex items-center gap-1">
+                  <Trophy size={16} className="text-amber-500 fill-amber-500" /> #{myRank > 0 ? myRank : "-"}
+                </span>
+              </div>
             </div>
 
             <button
@@ -291,6 +315,16 @@ export function TechnicianPanel({ techId }: TechnicianPanelProps) {
           }`}
         >
           <History size={16} /> Work History ({historyQueue.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("leaderboard")}
+          className={`pb-2 px-4 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+            activeTab === "leaderboard"
+              ? "border-blue-500 text-blue-500"
+              : "border-transparent text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <Trophy size={16} className={activeTab === "leaderboard" ? "text-amber-500 fill-amber-500" : ""} /> Leaderboard {myRank > 0 && `(Rank #${myRank})`}
         </button>
       </div>
 
@@ -426,7 +460,7 @@ export function TechnicianPanel({ techId }: TechnicianPanelProps) {
               ))
             )}
           </motion.div>
-        ) : (
+        ) : activeTab === "history" ? (
           <motion.div
             key="history"
             initial={{ opacity: 0 }}
@@ -489,7 +523,103 @@ export function TechnicianPanel({ techId }: TechnicianPanelProps) {
               ))
             )}
           </motion.div>
-        )}
+        ) : activeTab === "leaderboard" ? (
+          <motion.div
+            key="leaderboard"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col gap-4"
+          >
+            <div className="bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-md">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <Trophy className="text-amber-500 fill-amber-500" size={18} /> Technician Roster Leaderboard
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Rankings based on total tickets resolved and customer satisfaction ratings.</p>
+                </div>
+                {myRank > 0 && (
+                  <span className="px-3 py-1 rounded-xl text-xs font-extrabold bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                    Your Rank: #{myRank}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {sortedTechnicians.map((tech, idx) => {
+                  const isMe = tech.id === techId;
+                  const statusObj = allTechStatuses.find((s) => s.userId === tech.id);
+                  const currentStatus = statusObj ? statusObj.currentStatus : "available";
+
+                  const techTokens = allTokens.filter(t => t.assignedTo === tech.id);
+                  const resolvedCount = techTokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status)).length;
+                  const ratedTokens = techTokens.filter(t => t.rating !== undefined);
+                  const techAvgRating = ratedTokens.length > 0
+                    ? (ratedTokens.reduce((acc, t) => acc + (t.rating || 0), 0) / ratedTokens.length).toFixed(1)
+                    : "N/A";
+
+                  const withinSla = techTokens.filter(t => ["RESOLVED", "VERIFIED_CLOSED"].includes(t.status)).filter(t => {
+                    const resolvedTime = t.resolvedAt ? new Date(t.resolvedAt).getTime() : new Date(t.updatedAt).getTime();
+                    return resolvedTime <= new Date(t.slaDueAt).getTime();
+                  }).length;
+                  const slaComplianceRate = resolvedCount > 0 ? `${Math.round((withinSla / resolvedCount) * 100)}%` : "100%";
+
+                  return (
+                    <div
+                      key={tech.id}
+                      className={`p-4 rounded-xl border flex flex-col gap-3 relative transition-all ${
+                        isMe
+                          ? "bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/40 shadow-md ring-1 ring-blue-500/30"
+                          : "bg-slate-50/50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800/80"
+                      }`}
+                    >
+                      {/* Rank ribbon */}
+                      <div className={`absolute top-3 right-3 px-2 py-0.5 rounded text-[9px] font-extrabold ${
+                        idx === 0 ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950" :
+                        idx === 1 ? "bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-white" :
+                        idx === 2 ? "bg-amber-800 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-500"
+                      }`}>
+                        #{idx + 1}
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-blue-500/10 text-blue-500 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-extrabold text-xs select-none">
+                          {tech.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                            {tech.name} {isMe && <span className="text-[9px] font-extrabold text-blue-500 bg-blue-500/10 px-1.5 py-0.2 rounded border border-blue-500/20">(YOU)</span>}
+                          </h4>
+                          <span className="text-[10px] text-slate-400 block font-medium">
+                            {tech.department} &bull; <span className="uppercase text-[9px] font-semibold">{currentStatus.replace("_", " ")}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 bg-white dark:bg-[#0b0f19] p-2 rounded-lg border border-slate-200 dark:border-slate-800/60 text-center text-[10px]">
+                        <div>
+                          <span className="text-[8px] text-slate-400 font-bold block uppercase">Resolved</span>
+                          <span className="font-extrabold text-slate-700 dark:text-slate-200">{resolvedCount}</span>
+                        </div>
+                        <div>
+                          <span className="text-[8px] text-slate-400 font-bold block uppercase">SLA</span>
+                          <span className="font-extrabold text-emerald-500">{slaComplianceRate}</span>
+                        </div>
+                        <div>
+                          <span className="text-[8px] text-slate-400 font-bold block uppercase">Rating</span>
+                          <span className="font-extrabold text-amber-500 flex items-center justify-center gap-0.5">
+                            <Star size={9} className="fill-amber-500" /> {techAvgRating}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
       </AnimatePresence>
 
       {/* Hold Reason Modal */}
