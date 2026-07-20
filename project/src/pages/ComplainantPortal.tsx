@@ -88,6 +88,19 @@ export function ComplainantPortal() {
     return () => window.removeEventListener("cts_db_updated", handleSync);
   }, [trackedToken]);
 
+  useEffect(() => {
+    const handleTrackTokenEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.detail) {
+        setSearchTrackingId(customEvent.detail);
+        setActiveTab("track");
+        setTimeout(() => refreshTrackedToken(customEvent.detail), 50);
+      }
+    };
+    window.addEventListener("cts_track_token", handleTrackTokenEvent);
+    return () => window.removeEventListener("cts_track_token", handleTrackTokenEvent);
+  }, []);
+
   const triggerConfetti = () => {
     confetti({
       particleCount: 100,
@@ -115,6 +128,12 @@ export function ComplainantPortal() {
         setContact("");
         setDescription("");
         setMockPhoto(null);
+
+        // Auto-redirect to tracking tab
+        const tid = res.token.trackingId;
+        setSearchTrackingId(tid);
+        setActiveTab("track");
+        setTimeout(() => refreshTrackedToken(tid), 50);
       }
     } catch (err) {
       console.error(err);

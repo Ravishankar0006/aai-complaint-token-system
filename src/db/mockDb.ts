@@ -28,10 +28,6 @@ const SEED_CATEGORIES: Category[] = [
   { id: "cat-wifi", name: "Network & WiFi Access", department: "IT Helpdesk", defaultSlaHours: 4 },
   { id: "cat-hw", name: "Hardware & Terminal PCs", department: "IT Helpdesk", defaultSlaHours: 8 },
   { id: "cat-sw", name: "Software & System Access", department: "IT Helpdesk", defaultSlaHours: 24 },
-  { id: "cat-power", name: "Power Failure & Outage", department: "Electrical", defaultSlaHours: 2 },
-  { id: "cat-light", name: "Terminal Light Replacement", department: "Electrical", defaultSlaHours: 12 },
-  { id: "cat-leak", name: "Water Leakage & Washroom", department: "Plumbing", defaultSlaHours: 3 },
-  { id: "cat-ac", name: "AC Cooling & Ventilation", department: "HVAC", defaultSlaHours: 6 },
 ];
 
 const SEED_USERS: User[] = [
@@ -804,8 +800,10 @@ export async function createComplaint(
     throw error;
   }
 
+  const isEmail = contact.includes("@");
+  const channel = isEmail ? "email" : "sms";
   await logHistory(tokenId, "NONE", "SUBMITTED", "public", name, "complainant", "Complaint submitted via portal");
-  await logNotification(tokenId, "email", contact, `Ticket ${trackingId} created. Track it on the IGI Helpdesk portal.`);
+  await logNotification(tokenId, channel, contact, `Ticket ${trackingId} created. Track it on the IGI Helpdesk portal.`);
 
   // Auto assign right away
   await autoAssignToken(tokenId);

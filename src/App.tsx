@@ -20,6 +20,7 @@ export default function App() {
     return (saved as any) || "landing";
   });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [latestNotification, setLatestNotification] = useState<any>(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -49,6 +50,7 @@ export default function App() {
         (payload: any) => {
           const latest = payload.new;
           setToastMessage(`[${latest.channel.toUpperCase()}] to ${latest.recipient}: ${latest.message}`);
+          setLatestNotification(latest);
         }
       )
       .subscribe();
@@ -133,6 +135,25 @@ export default function App() {
     localStorage.removeItem("cts_current_view");
   }, []);
 
+  const handleToastClick = async () => {
+    if (latestNotification && latestNotification.tokenId) {
+      try {
+        const { data: tokens, error } = await supabase.from("tokens").select("*").eq("id", latestNotification.tokenId);
+        if (!error && tokens && tokens.length > 0) {
+          const token = tokens[0];
+          setCurrentView("complainant");
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("cts_track_token", { detail: token.trackingId }));
+          }, 50);
+        }
+      } catch (err) {
+        console.error("Error redirecting from toast click:", err);
+      }
+    }
+    setToastMessage(null);
+    setLatestNotification(null);
+  };
+
   const handleSelectRoleFromLanding = useCallback((role: "complainant" | "technician" | "admin") => {
     if (role === "complainant") {
       setCurrentView("complainant");
@@ -208,7 +229,7 @@ export default function App() {
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 20, opacity: 0, scale: 0.95 }}
             className="fixed bottom-4 right-4 z-50 p-4 rounded-xl bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-blue-500/20 max-w-sm shadow-elevated flex gap-3 items-start cursor-pointer"
-            onClick={() => setToastMessage(null)}
+            onClick={handleToastClick}
             role="alert"
           >
             <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500 shrink-0 mt-0.5">
